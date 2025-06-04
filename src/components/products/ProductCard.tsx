@@ -1,8 +1,13 @@
+
+'use client';
+
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Product } from '@/types';
-import { DollarSign, PackageCheck, PackageX, ImageOff } from 'lucide-react';
+import { DollarSign, PackageCheck, PackageX, ImageOff, Edit3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
 
 interface ProductCardProps {
   product: Product;
@@ -11,6 +16,13 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const isAvailable = product.availability === 'En Stock' || product.availability === 'Poco Stock';
   const placeholderImage = "https://placehold.co/300x200.png";
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setUserRole(localStorage.getItem('userRole'));
+    }
+  }, []);
 
   return (
     <Card className="flex flex-col overflow-hidden transition-shadow duration-300 ease-in-out hover:shadow-xl h-full rounded-lg border">
@@ -43,14 +55,20 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
       </CardContent>
-      {product.availability && (
-         <div className="p-4 pt-0">
-          <Badge variant={isAvailable ? 'default' : 'destructive'} className="w-full justify-center py-2 text-sm">
-            {isAvailable ? <PackageCheck className="mr-2 h-4 w-4" /> : <PackageX className="mr-2 h-4 w-4" />}
-            {product.availability}
-          </Badge>
-        </div>
-      )}
+      <div className="p-4 pt-0">
+        {product.availability && (
+           <Badge variant={isAvailable ? 'default' : 'destructive'} className="w-full justify-center py-2 text-sm mb-2">
+              {isAvailable ? <PackageCheck className="mr-2 h-4 w-4" /> : <PackageX className="mr-2 h-4 w-4" />}
+              {product.availability}
+            </Badge>
+        )}
+        {userRole === 'employee' && (
+          <Button variant="outline" size="sm" className="w-full" disabled>
+            <Edit3 className="mr-2 h-4 w-4" />
+            Actualizar Stock (Simulado)
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }

@@ -1,11 +1,12 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProductSearch } from '@/components/products/ProductSearch';
 import { ProductCard } from '@/components/products/ProductCard';
 import type { Product as ProductType } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { SearchIcon as SearchIconLucide, Terminal, ShoppingBag } from "lucide-react";
+import { SearchIcon as SearchIconLucide, Terminal, ShoppingBag, ShieldAlert } from "lucide-react";
 import { Skeleton } from '@/components/ui/skeleton';
 
 
@@ -14,6 +15,14 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('userRole');
+      setUserRole(role);
+    }
+  }, []);
 
   const handleResults = (products: ProductType[]) => {
     setProductsToDisplay(products);
@@ -23,7 +32,7 @@ export default function HomePage() {
   const handleLoading = (loading: boolean) => {
     setIsLoading(loading);
     if (loading) {
-      setHasSearched(true); // Set hasSearched to true when loading starts
+      setHasSearched(true); 
     }
   };
 
@@ -34,6 +43,16 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {userRole === 'admin' && (
+        <Alert variant="default" className="mb-8 max-w-2xl mx-auto border-primary text-primary-foreground bg-primary/90">
+          <ShieldAlert className="h-5 w-5 text-primary-foreground" />
+          <AlertTitle className="font-bold text-primary-foreground">Modo Administrador Activado</AlertTitle>
+          <AlertDescription className="text-primary-foreground/90">
+            Tienes acceso completo (simulado). Las funciones de administración se desarrollarían aquí.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <section className="mb-10 flex flex-col items-center">
         <ShoppingBag className="h-16 w-16 text-primary mb-4" />
         <h1 className="text-4xl font-headline font-bold mb-6 text-center text-foreground">

@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { LogIn, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from 'next/navigation';
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,6 +17,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     setIsClient(true);
@@ -26,24 +30,35 @@ export default function LoginPage() {
 
     setIsLoading(true);
     setError(null);
-    
+    localStorage.removeItem('userRole'); // Clear previous role
+
     // Simulación de llamada a API de autenticación
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Lógica de autenticación simulada (esto debería ser reemplazado por una real)
+    let loggedInRole: string | null = null;
+
     if (email === "admin@example.com" && password === "adminpass") {
       console.log("Inicio de sesión como Administrador (simulado)");
-      // Idealmente, aquí se redirigiría o se manejaría el estado de sesión.
-      // Ejemplo: router.push('/admin/dashboard');
+      loggedInRole = 'admin';
     } else if (email === "empleado@example.com" && password === "empleadopass") {
       console.log("Inicio de sesión como Empleado (simulado)");
-      // Ejemplo: router.push('/employee/tasks');
+      loggedInRole = 'employee';
     } else if (email === "cliente@example.com" && password === "clientepass") {
       console.log("Inicio de sesión como Cliente (simulado)");
-      // Ejemplo: router.push('/my-account');
+      loggedInRole = 'client';
     } else {
       setError("Credenciales incorrectas. Por favor, inténtalo de nuevo.");
     }
+
+    if (loggedInRole) {
+      localStorage.setItem('userRole', loggedInRole);
+      toast({
+        title: "Inicio de sesión exitoso",
+        description: `Has ingresado como: ${loggedInRole.charAt(0).toUpperCase() + loggedInRole.slice(1)}`,
+      });
+      router.push('/');
+    }
+    
     setIsLoading(false);
   };
 
@@ -111,6 +126,12 @@ export default function LoginPage() {
             <Link href="#" className="font-semibold text-primary hover:underline">
               Regístrate aquí
             </Link>
+          </p>
+           <p className="mt-4 text-center text-xs text-muted-foreground">
+            Usuarios de prueba:<br/>
+            admin@example.com / adminpass<br/>
+            empleado@example.com / empleadopass<br/>
+            cliente@example.com / clientepass
           </p>
         </CardContent>
       </Card>
