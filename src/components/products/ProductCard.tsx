@@ -18,10 +18,11 @@ interface ProductCardProps {
   product: Product;
 }
 
+const FIRESTORE_COLLECTION_NAME = 'productos'; // Nombre de la colección actualizado
+
 export function ProductCard({ product: initialProduct }: ProductCardProps) {
   const { userRole } = useAuth();
   const { toast } = useToast();
-  // Initialize stock from prop, ensure it's a number, default to 0 if undefined/null
   const [product, setProduct] = useState<Product>(initialProduct);
   const [isLoadingStockUpdate, setIsLoadingStockUpdate] = useState(false);
   const [updateAmount, setUpdateAmount] = useState<number>(1);
@@ -53,14 +54,11 @@ export function ProductCard({ product: initialProduct }: ProductCardProps) {
 
     setIsLoadingStockUpdate(true);
     try {
-      const productRef = doc(db, 'products', product.id);
-      // IMPORTANT: In a real app, this update MUST be handled by a Cloud Function
-      // for security (checking employee role server-side) and data integrity.
+      const productRef = doc(db, FIRESTORE_COLLECTION_NAME, product.id); // Usar la constante
       await updateDoc(productRef, {
         stock: increment(amount)
       });
       
-      // Fetch the updated document to ensure consistency, or just update locally
       const updatedDocSnap = await getDoc(productRef);
       const updatedProductData = updatedDocSnap.data() as Product | undefined;
 

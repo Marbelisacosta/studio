@@ -14,6 +14,7 @@ import { collection, getDocs, limit, query as firestoreQuery, where, startAfter,
 import { Button } from '@/components/ui/button';
 
 const PRODUCTS_PER_PAGE = 8;
+const FIRESTORE_COLLECTION_NAME = 'productos'; // Nombre de la colección actualizado
 
 export default function HomePage() {
   const [productsToDisplay, setProductsToDisplay] = useState<ProductType[]>([]);
@@ -29,20 +30,19 @@ export default function HomePage() {
   const { currentUser, loading: authLoading } = useAuth();
 
   const fetchProductsFromFirestore = useCallback(async (loadMore = false) => {
-    if (!hasMoreProducts && loadMore) return; // Don't fetch if no more products for pagination
-    if (hasSearched && !loadMore) return; // Don't fetch initial if a search is active
+    if (!hasMoreProducts && loadMore) return; 
+    if (hasSearched && !loadMore) return; 
 
     setIsLoadingProducts(true);
     setSearchError(null);
     try {
-      const productsCollectionRef = collection(db, 'products');
+      const productsCollectionRef = collection(db, FIRESTORE_COLLECTION_NAME); // Usar la constante
       let q;
 
       if (loadMore && lastVisibleProduct) {
         q = firestoreQuery(productsCollectionRef, orderBy("name"), startAfter(lastVisibleProduct), limit(PRODUCTS_PER_PAGE));
       } else {
-        // Initial load or reset
-        setProductsToDisplay([]); // Clear previous products for a fresh load
+        setProductsToDisplay([]); 
         q = firestoreQuery(productsCollectionRef, orderBy("name"), limit(PRODUCTS_PER_PAGE));
       }
       
@@ -70,7 +70,6 @@ export default function HomePage() {
   }, [lastVisibleProduct, hasMoreProducts, hasSearched]);
 
   useEffect(() => {
-    // Only perform initial fetch if not already done and no search is active
     if (!initialLoadComplete && !hasSearched) {
       fetchProductsFromFirestore(false);
     }
@@ -78,21 +77,18 @@ export default function HomePage() {
 
 
   const handleSearchResults = (products: ProductType[]) => {
-    // Genkit search results are names. We need to fetch full product details from Firestore for these names.
-    // For simplicity, this example will just display the names as products.
-    // A real implementation would fetch from Firestore based on these names.
-    const searchedProductsWithStock = products.map(p => ({...p, stock: p.stock ?? Math.floor(Math.random() * 20)})); // Simulate stock for searched items
+    const searchedProductsWithStock = products.map(p => ({...p, stock: p.stock ?? Math.floor(Math.random() * 20)}));
     setProductsToDisplay(searchedProductsWithStock); 
     setHasSearched(true);
-    setHasMoreProducts(false); // Disable Firestore pagination when showing search results
-    setInitialLoadComplete(true); // Mark initial load as complete as we now have search results
+    setHasMoreProducts(false); 
+    setInitialLoadComplete(true); 
   };
 
   const handleSearchLoading = (loading: boolean) => {
     setIsSearching(loading);
     if (loading) {
       setHasSearched(true); 
-      setProductsToDisplay([]); // Clear current products when starting a new search
+      setProductsToDisplay([]); 
     }
   };
 
@@ -105,10 +101,9 @@ export default function HomePage() {
   const handleClearSearch = () => {
     setHasSearched(false);
     setSearchError(null);
-    setLastVisibleProduct(null); // Reset pagination for Firestore
+    setLastVisibleProduct(null); 
     setHasMoreProducts(true);
-    setInitialLoadComplete(false); // Trigger re-fetch of initial products
-    // fetchProductsFromFirestore(false); // Fetch initial products again // this is handled by useEffect now
+    setInitialLoadComplete(false); 
   }
 
   const displayProducts = productsToDisplay;
@@ -121,10 +116,10 @@ export default function HomePage() {
           <AlertTitle className="font-bold text-primary">¡Bienvenido a Click Shop con Firebase!</AlertTitle>
           <AlertDescription className="text-primary/90">
             Esta versión integra Firebase Authentication. Los roles se leen/escriben en Firestore (<code>users</code> colección).
-            Los productos se cargan desde Firestore (<code>products</code> colección).
+            Los productos se cargan desde Firestore (<code>{FIRESTORE_COLLECTION_NAME}</code> colección). {/* Actualizado aquí también */}
             La actualización de stock (empleados) simula una llamada a Cloud Function actualizando Firestore.
             <strong className="block mt-1">Importante:</strong> Configura tus credenciales de Firebase en <code>.env</code> para que funcione.
-            Asegúrate de tener datos en tu colección <code>products</code> de Firestore con campos <code>name (string)</code> y <code>stock (number)</code>.
+            Asegúrate de tener datos en tu colección <code>{FIRESTORE_COLLECTION_NAME}</code> de Firestore con campos <code>name (string)</code> y <code>stock (number)</code>.
           </AlertDescription>
         </Alert>
 
