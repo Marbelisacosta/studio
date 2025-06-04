@@ -5,9 +5,9 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import type { UserRoleType } from '@/types';
+import type { UserRoleType, UserProfile } from '@/types';
 
 
 interface AuthContextType {
@@ -15,6 +15,8 @@ interface AuthContextType {
   userRole: UserRoleType | null;
   loading: boolean;
   logout: () => Promise<void>;
+  updateUserRoleInFirestore: (uid: string, newRole: UserRoleType) => Promise<void>;
+  getAllUsersFromFirestore: () => Promise<UserProfile[]>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,8 +37,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (userDocSnap.exists()) {
             setUserRole(userDocSnap.data()?.role as UserRoleType || null);
             } else {
-            // User document might not exist yet if registration is multi-step
-            // or if role is assigned later by an admin.
             setUserRole(null); 
             }
         } catch (error) {
@@ -55,16 +55,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       await firebaseSignOut(auth);
-      // State updates (currentUser, userRole) will be handled by onAuthStateChanged
-      // No need to clear localStorage manually if we stop using it for roles
       router.push('/login');
     } catch (error) {
       console.error("Error signing out: ", error);
     }
   };
+
+  const updateUserRoleInFirestore = async (uid: string, newRole: UserRoleType) => {
+    if (!uid || !newRole) throw new Error("UID y nuevo rol son requeridos para actualizar en Firestore.");
+    try {
+      const userDocRef = doc(db, 'users', uid);
+      await updateDoc(userDocRef, { role: newRole });
+      console.log(`Usuario ${uid} actualizado con rol ${newRole} en Firestore.`);
+    } catch (error) {
+      console.error("Error al actualizar el rol del usuario en Firestore:", error);
+      throw error;
+    }
+  };
+
+  const getAllUsersFromFirestore = async (): Promise<UserProfile[]> => {
+    try {
+      const usersCollectionRef = collection(db, 'users');
+      const querySnapshot = await getDocs(usersCollectionRef);
+      const usersList = querySnapshot.docs.map(docSnap => docSnap.data() as UserProfile);
+      return usersList.filter(user => user.uid); // Asegurar que el uid existe
+    } catch (error) {
+      console.error("Error al obtener todos los usuarios de Firestore:", error);
+      throw error;
+    }
+  };
   
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, loading, logout }}>
+    <AuthContext.Provider value={{ currentUser, userRole, loading, logout, updateUserRoleInFirestore, getAllUsersFromFirestore }}>
       {children}
     </AuthContext.Provider>
   );
@@ -82,7 +104,8 @@ export const registerUserWithRoleInFirestore = async (uid: string, email: string
   if (!uid || !role) throw new Error("UID y rol son requeridos para el registro en Firestore.");
   try {
     const userDocRef = doc(db, 'users', uid);
-    await setDoc(userDocRef, { uid, email, role }, { merge: true });
+    // Usar email: email ?? '' para evitar error si email es null.
+    await setDoc(userDocRef, { uid, email: email ?? 'No disponible', role }, { merge: true });
     console.log(`Usuario ${uid} registrado con rol ${role} en Firestore.`);
   } catch (error) {
     console.error("Error al establecer el rol del usuario en Firestore durante el registro:", error);
