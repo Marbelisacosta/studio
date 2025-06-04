@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag, Info } from 'lucide-react';
+import { ShoppingBag, Info, User } from 'lucide-react';
 
 export function Header() {
   return (
@@ -23,6 +23,14 @@ export function Header() {
                 <Link href="/about" className="flex items-center px-2 py-1 sm:px-3 sm:py-2">
                   <Info className="mr-0 h-5 w-5 sm:mr-2" />
                   <span className="hidden sm:inline">Nosotros</span>
+                </Link>
+              </Button>
+            </li>
+            <li>
+              <Button variant="ghost" asChild>
+                <Link href="/login" className="flex items-center px-2 py-1 sm:px-3 sm:py-2">
+                  <User className="mr-0 h-5 w-5 sm:mr-2" />
+                  <span className="hidden sm:inline">Login</span>
                 </Link>
               </Button>
             </li>
