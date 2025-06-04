@@ -1,5 +1,6 @@
 
 import type {NextConfig} from 'next';
+import withPWAInit from 'next-pwa';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -27,4 +28,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const withPWA = withPWAInit({
+  dest: 'public',
+  register: true, // Registra el service worker
+  skipWaiting: true, // Instala nuevas versiones del service worker inmediatamente
+  disable: process.env.NODE_ENV === 'development', // Deshabilita PWA en desarrollo para evitar problemas de caché
+  // swSrc: 'service-worker.js', // Opcional: si tienes un service worker personalizado
+});
+
+
+export default withPWA(nextConfig);
