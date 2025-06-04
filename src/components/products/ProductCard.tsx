@@ -8,6 +8,7 @@ import type { Product } from '@/types';
 import { DollarSign, PackageCheck, PackageX, ImageOff, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
+import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   product: Product;
@@ -17,12 +18,23 @@ export function ProductCard({ product }: ProductCardProps) {
   const isAvailable = product.availability === 'En Stock' || product.availability === 'Poco Stock';
   const placeholderImage = "https://placehold.co/300x200.png";
   const [userRole, setUserRole] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUserRole(localStorage.getItem('userRole'));
     }
   }, []);
+
+  const handleUpdateStock = () => {
+    // Simulación: podrías cambiar el estado local del producto aquí si tuvieras un estado más complejo
+    // o llamar a una API si esto fuera una aplicación real.
+    toast({
+      title: "Stock Actualizado (Simulación)",
+      description: `El stock para "${product.name}" ha sido simuladamente actualizado.`,
+      variant: "default",
+    });
+  };
 
   return (
     <Card className="flex flex-col overflow-hidden transition-shadow duration-300 ease-in-out hover:shadow-xl h-full rounded-lg border">
@@ -63,9 +75,9 @@ export function ProductCard({ product }: ProductCardProps) {
             </Badge>
         )}
         {userRole === 'employee' && (
-          <Button variant="outline" size="sm" className="w-full" disabled>
+          <Button variant="outline" size="sm" className="w-full" onClick={handleUpdateStock}>
             <Edit3 className="mr-2 h-4 w-4" />
-            Actualizar Stock (Simulado)
+            Actualizar Stock
           </Button>
         )}
       </div>

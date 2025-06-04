@@ -5,8 +5,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ShieldAlert, LayoutDashboard, Users, UserCheck } from "lucide-react";
+import { ShieldAlert, LayoutDashboard, Users, UserCheck, BarChart3, Settings, ShieldX } from "lucide-react";
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -23,7 +24,6 @@ export default function AdminDashboardPage() {
   }, [router]);
 
   if (!isClient || userRole !== 'admin') {
-    // Muestra un loader o nada mientras se verifica el rol y redirige
     return <div className="flex justify-center items-center min-h-screen">Cargando...</div>;
   }
 
@@ -43,38 +43,53 @@ export default function AdminDashboardPage() {
             <ShieldAlert className="h-5 w-5 text-primary-foreground" />
             <AlertTitle className="font-bold text-primary-foreground">Modo Administrador Activado</AlertTitle>
             <AlertDescription className="text-primary-foreground/90">
-              Tienes acceso completo (simulado) a todas las funciones de administración.
+              Tienes acceso (simulado) a todas las funciones de administración.
             </AlertDescription>
           </Alert>
           
           <section>
             <h2 className="text-2xl font-semibold mb-4 text-foreground/90 flex items-center">
               <Users className="mr-3 h-6 w-6 text-primary" />
-              Gestión de Usuarios y Roles (Simulado)
+              Gestión de Usuarios y Roles
             </h2>
             <p className="text-muted-foreground mb-4">
-              En un sistema real, aquí es donde podrías aprobar nuevas cuentas de empleados,
+              Aquí es donde podrías aprobar nuevas cuentas de empleados,
               asignar o cambiar roles, y gestionar los usuarios existentes.
-              Cualquier nuevo registro de empleado o solicitud de cambio de rol requeriría tu aprobación.
             </p>
-            <Button variant="outline" disabled className="w-full sm:w-auto">
-              <UserCheck className="mr-2 h-5 w-5" />
-              Ver Usuarios Pendientes (Simulado)
+            <Button variant="outline" asChild className="w-full sm:w-auto">
+              <Link href="/admin/pending-users">
+                <UserCheck className="mr-2 h-5 w-5" />
+                Ver Usuarios Pendientes
+              </Link>
             </Button>
           </section>
           
           <section>
-            <h2 className="text-2xl font-semibold mb-4 text-foreground/90">Otras Acciones (Simuladas)</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-foreground/90">Otras Acciones Administrativas</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button variant="outline" disabled>Ver Reportes de Ventas</Button>
-              <Button variant="outline" disabled>Configuración del Sitio</Button>
-              <Button variant="outline" disabled>Moderar Contenido</Button>
+              <Button variant="outline" asChild>
+                <Link href="/admin/sales-reports">
+                  <BarChart3 className="mr-2 h-5 w-5" />
+                  Ver Reportes de Ventas
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/admin/site-settings">
+                  <Settings className="mr-2 h-5 w-5" />
+                  Configuración del Sitio
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/admin/moderate-content">
+                  <ShieldX className="mr-2 h-5 w-5" />
+                  Moderar Contenido
+                </Link>
+              </Button>
             </div>
           </section>
 
            <p className="text-muted-foreground text-sm mt-6">
-            Este es un panel de control simulado. Las funcionalidades reales como la gestión de usuarios,
-            aprobaciones y notificaciones requerirían desarrollo de backend y una base de datos.
+            Este es un panel de control con funcionalidades simuladas. La implementación completa requeriría desarrollo de backend y una base de datos.
           </p>
         </CardContent>
       </Card>
