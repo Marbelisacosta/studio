@@ -14,7 +14,7 @@ import { collection, getDocs, limit, query as firestoreQuery, where, startAfter,
 import { Button } from '@/components/ui/button';
 
 const PRODUCTS_PER_PAGE = 8;
-const FIRESTORE_COLLECTION_NAME = 'productos'; // Nombre de la colección actualizado
+const FIRESTORE_COLLECTION_NAME = 'Productos'; // Nombre de la colección actualizado a "Productos"
 
 export default function HomePage() {
   const [productsToDisplay, setProductsToDisplay] = useState<ProductType[]>([]);
@@ -116,7 +116,7 @@ export default function HomePage() {
           <AlertTitle className="font-bold text-primary">¡Bienvenido a Click Shop con Firebase!</AlertTitle>
           <AlertDescription className="text-primary/90">
             Esta versión integra Firebase Authentication. Los roles se leen/escriben en Firestore (<code>users</code> colección).
-            Los productos se cargan desde Firestore (<code>{FIRESTORE_COLLECTION_NAME}</code> colección). {/* Actualizado aquí también */}
+            Los productos se cargan desde Firestore (<code>{FIRESTORE_COLLECTION_NAME}</code> colección).
             La actualización de stock (empleados) simula una llamada a Cloud Function actualizando Firestore.
             <strong className="block mt-1">Importante:</strong> Configura tus credenciales de Firebase en <code>.env</code> para que funcione.
             Asegúrate de tener datos en tu colección <code>{FIRESTORE_COLLECTION_NAME}</code> de Firestore con campos <code>name (string)</code> y <code>stock (number)</code>.

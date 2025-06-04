@@ -18,7 +18,7 @@ interface ProductCardProps {
   product: Product;
 }
 
-const FIRESTORE_COLLECTION_NAME = 'productos'; // Nombre de la colección actualizado
+const FIRESTORE_COLLECTION_NAME = 'Productos'; // Nombre de la colección actualizado a "Productos"
 
 export function ProductCard({ product: initialProduct }: ProductCardProps) {
   const { userRole } = useAuth();
