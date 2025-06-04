@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ShieldAlert, LayoutDashboard } from "lucide-react";
+import { ShieldAlert, LayoutDashboard, Users, UserCheck } from "lucide-react";
 import { Button } from '@/components/ui/button';
 
 export default function AdminDashboardPage() {
@@ -44,22 +44,37 @@ export default function AdminDashboardPage() {
             <AlertTitle className="font-bold text-primary-foreground">Modo Administrador Activado</AlertTitle>
             <AlertDescription className="text-primary-foreground/90">
               Tienes acceso completo (simulado) a todas las funciones de administración.
-              Aquí se desarrollarían herramientas para gestionar usuarios, productos, pedidos, etc.
             </AlertDescription>
           </Alert>
           
           <section>
-            <h2 className="text-2xl font-semibold mb-4 text-foreground/90">Acciones Rápidas (Simuladas)</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-foreground/90 flex items-center">
+              <Users className="mr-3 h-6 w-6 text-primary" />
+              Gestión de Usuarios y Roles (Simulado)
+            </h2>
+            <p className="text-muted-foreground mb-4">
+              En un sistema real, aquí es donde podrías aprobar nuevas cuentas de empleados,
+              asignar o cambiar roles, y gestionar los usuarios existentes.
+              Cualquier nuevo registro de empleado o solicitud de cambio de rol requeriría tu aprobación.
+            </p>
+            <Button variant="outline" disabled className="w-full sm:w-auto">
+              <UserCheck className="mr-2 h-5 w-5" />
+              Ver Usuarios Pendientes (Simulado)
+            </Button>
+          </section>
+          
+          <section>
+            <h2 className="text-2xl font-semibold mb-4 text-foreground/90">Otras Acciones (Simuladas)</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button variant="outline" disabled>Gestionar Usuarios</Button>
               <Button variant="outline" disabled>Ver Reportes de Ventas</Button>
               <Button variant="outline" disabled>Configuración del Sitio</Button>
               <Button variant="outline" disabled>Moderar Contenido</Button>
             </div>
           </section>
 
-           <p className="text-muted-foreground text-sm">
-            Este es un panel de control simulado. Las funcionalidades reales requerirían desarrollo de backend.
+           <p className="text-muted-foreground text-sm mt-6">
+            Este es un panel de control simulado. Las funcionalidades reales como la gestión de usuarios,
+            aprobaciones y notificaciones requerirían desarrollo de backend y una base de datos.
           </p>
         </CardContent>
       </Card>
