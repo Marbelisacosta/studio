@@ -6,7 +6,7 @@ import { ProductSearch } from '@/components/products/ProductSearch';
 import { ProductCard } from '@/components/products/ProductCard';
 import type { Product as ProductType } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { SearchIcon as SearchIconLucide, Terminal, Archive, InfoIcon, Loader2 } from "lucide-react"; // Archive en lugar de ShoppingBag
+import { SearchIcon as SearchIconLucide, Terminal, Archive, InfoIcon, Loader2, Store } from "lucide-react";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
@@ -28,6 +28,18 @@ export default function HomePage() {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   const { currentUser, userRole, loading: authLoading } = useAuth();
+
+  const isEmployeeOrAdmin = currentUser && (userRole === 'admin' || userRole === 'employee');
+
+  const pageTitle = isEmployeeOrAdmin ? "Gestiona el Inventario de Productos" : "Nuestro Catálogo de Productos";
+  const pageDescription = isEmployeeOrAdmin 
+    ? "Usa la búsqueda inteligente para encontrar productos rápidamente y actualiza sus niveles de stock (entradas/salidas)."
+    : "Explora nuestra selección de productos. La búsqueda inteligente te ayudará a encontrar lo que necesitas.";
+  const PageIcon = isEmployeeOrAdmin ? Archive : Store;
+  const mainContentTitle = hasSearched 
+    ? "Resultados de Búsqueda" 
+    : isEmployeeOrAdmin ? "Inventario de Productos" : "Productos Destacados";
+
 
   const fetchInitialProducts = useCallback(async (loadMore = false) => {
     if (!hasMoreProducts && loadMore) return; 
@@ -79,21 +91,27 @@ export default function HomePage() {
       setSearchError(null);
       setIsLoadingProducts(false);
       setHasSearched(true);
-      setHasMoreProducts(false);
+      setHasMoreProducts(false); 
       setInitialLoadComplete(true);
       return;
     }
 
     setIsLoadingProducts(true);
     setSearchError(null);
-    setProductsToDisplay([]);
+    setProductsToDisplay([]); 
+    setLastVisibleProduct(null); 
 
     try {
       const productsRef = collection(db, FIRESTORE_COLLECTION_NAME);
-      const q = firestoreQuery(productsRef, where('name', 'in', names.slice(0, 30)));
+      // Firestore 'in' query limit is 30 values.
+      // We also use toLowerCase() on names for a case-insensitive "like" search.
+      // This requires names in Firestore to also be consistently cased or a more complex search solution.
+      // For now, we'll rely on the AI flow to return correctly cased names or multiple variations.
+      const q = firestoreQuery(productsRef, where('name', 'in', names.slice(0, 30))); 
       const querySnapshot = await getDocs(q);
       const foundProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), stock: doc.data().stock ?? 0 } as ProductType));
       setProductsToDisplay(foundProducts);
+      setHasMoreProducts(false); // For AI search results, we don't implement pagination yet.
     } catch (error) {
       console.error('Error fetching searched products from Firestore:', error);
       setSearchError('Error al buscar productos coincidentes en la base de datos.');
@@ -101,7 +119,6 @@ export default function HomePage() {
     } finally {
       setIsLoadingProducts(false);
       setHasSearched(true);
-      setHasMoreProducts(false);
       setInitialLoadComplete(true);
     }
   };
@@ -116,7 +133,7 @@ export default function HomePage() {
       setHasSearched(true);
       setProductsToDisplay([]);
       setSearchError(null);
-      setIsLoadingProducts(true);
+      setIsLoadingProducts(true); 
     }
   };
 
@@ -132,33 +149,37 @@ export default function HomePage() {
     setSearchError(null);
     setLastVisibleProduct(null); 
     setHasMoreProducts(true);
-    setInitialLoadComplete(false);
+    setInitialLoadComplete(false); // This will trigger fetchInitialProducts
+    // setProductsToDisplay([]); // fetchInitialProducts will set this
   }
 
   const displayProducts = productsToDisplay;
-  const showSkeletons = isSearchingAi || (isLoadingProducts && !isSearchingAi);
+  const showSkeletons = isSearchingAi || (isLoadingProducts && !isSearchingAi && !initialLoadComplete);
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
        <Alert variant="default" className="mb-8 bg-primary/10 border-primary/30">
           <InfoIcon className="h-5 w-5 text-primary" />
-          <AlertTitle className="font-bold text-primary">Gestión de Inventario Click Shop con Firebase</AlertTitle>
+          <AlertTitle className="font-bold text-primary">
+            {isEmployeeOrAdmin ? "Gestión de Inventario Click Shop con Firebase" : "Bienvenido a Click Shop"}
+          </AlertTitle>
           <AlertDescription className="text-primary/90">
-            Esta aplicación te permite gestionar el stock de tus productos. Utiliza Firebase Authentication para los roles de usuario (empleado/admin)
-            y Firestore para almacenar los productos (<code>{FIRESTORE_COLLECTION_NAME}</code> colección) y los datos de usuario (<code>users</code> colección).
-            Las actualizaciones de stock (entradas/salidas) se realizan directamente en Firestore.
-            <strong className="block mt-1">Importante:</strong> Configura tus credenciales de Firebase en <code>.env</code> y la API Key de Google AI para que la búsqueda inteligente de productos funcione.
-            Asegúrate de tener datos en tu colección <code>{FIRESTORE_COLLECTION_NAME}</code> de Firestore con campos <code>name (string)</code> y <code>stock (number)</code>.
+            {isEmployeeOrAdmin 
+              ? `Esta aplicación te permite gestionar el stock de tus productos. Utiliza Firebase Authentication para los roles (empleado/admin) y Firestore para almacenar los productos (${FIRESTORE_COLLECTION_NAME} colección) y usuarios (users colección). Las actualizaciones de stock (entradas/salidas) se realizan directamente en Firestore.`
+              : `Explora nuestros productos. Si eres un empleado o administrador, inicia sesión para acceder a las herramientas de gestión de inventario.`
+            }
+            <strong className="block mt-1">Importante:</strong> Para la búsqueda inteligente de productos, asegúrate de que la API Key de Google AI esté configurada en <code>.env</code>.
+            {isEmployeeOrAdmin && ` Asegúrate de tener datos en tu colección ${FIRESTORE_COLLECTION_NAME} de Firestore con campos name (string) y stock (number).`}
           </AlertDescription>
         </Alert>
 
       <section className="mb-10 flex flex-col items-center">
-        <Archive className="h-16 w-16 text-primary mb-4" />
+        <PageIcon className="h-16 w-16 text-primary mb-4" />
         <h1 className="text-4xl font-headline font-bold mb-6 text-center text-foreground">
-          Gestiona el Inventario de Productos
+          {pageTitle}
         </h1>
         <p className="text-lg text-muted-foreground mb-8 text-center max-w-2xl">
-          Usa la búsqueda inteligente para encontrar productos rápidamente y actualiza sus niveles de stock (entradas/salidas).
+          {pageDescription}
         </p>
         <div className="flex w-full max-w-xl items-center space-x-2">
           <ProductSearch
@@ -193,12 +214,12 @@ export default function HomePage() {
          <div className="text-center text-muted-foreground py-10">
             <SearchIconLucide className="mx-auto h-12 w-12 mb-4" />
             <p className="text-xl font-semibold">
-              {hasSearched ? "No se encontraron productos para tu búsqueda." : "No hay productos en el inventario."}
+              {hasSearched ? "No se encontraron productos para tu búsqueda." : "No hay productos para mostrar."}
             </p>
             <p>
               {hasSearched 
                 ? "Intenta con diferentes palabras clave." 
-                : "Asegúrate de haber añadido productos a tu base de datos Firestore."}
+                : isEmployeeOrAdmin ? "Asegúrate de haber añadido productos a tu base de datos Firestore." : "Vuelve más tarde para ver nuestro catálogo."}
             </p>
              {hasSearched && <Button variant="link" onClick={handleClearSearch}>Ver todos los productos</Button>}
           </div>
@@ -207,7 +228,7 @@ export default function HomePage() {
       {!showSkeletons && displayProducts.length > 0 && (
         <section>
           <h2 className="text-3xl font-headline font-semibold mb-8 text-center text-foreground">
-            {hasSearched ? "Resultados de Búsqueda" : "Inventario de Productos"}
+            {mainContentTitle}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {displayProducts.map(product => (
@@ -223,7 +244,9 @@ export default function HomePage() {
             </div>
           )}
            {!hasSearched && !hasMoreProducts && initialLoadComplete && displayProducts.length > 0 && (
-             <p className="text-center text-muted-foreground mt-8">Has llegado al final del inventario.</p>
+             <p className="text-center text-muted-foreground mt-8">
+                {isEmployeeOrAdmin ? "Has llegado al final del inventario." : "Has visto todos nuestros productos destacados."}
+             </p>
            )}
         </section>
       )}
@@ -237,10 +260,11 @@ function CardSkeleton() {
       <Skeleton className="aspect-[3/2] w-full bg-muted" />
       <div className="p-4 space-y-3">
         <Skeleton className="h-6 w-3/4 bg-muted" />
-        <Skeleton className="h-4 w-1/2 bg-muted" /> {/* For product name */}
-        <Skeleton className="h-4 w-1/3 bg-muted" /> {/* For stock text */}
-        <Skeleton className="h-10 w-full bg-muted mt-2" /> {/* For button area */}
+        <Skeleton className="h-4 w-1/2 bg-muted" /> 
+        <Skeleton className="h-4 w-1/3 bg-muted" /> 
+        <Skeleton className="h-10 w-full bg-muted mt-2" /> 
       </div>
     </div>
   );
 }
+

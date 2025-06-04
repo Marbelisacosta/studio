@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
-import { Archive, Info, User, LogOut, LayoutDashboard } from 'lucide-react'; // Archive en lugar de ShoppingBag
+import { Archive, Info, User, LogOut, LayoutDashboard, BookOpen } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,6 +36,10 @@ export function Header() {
 
   const dashboardLink = getDashboardLink();
 
+  const mainNavLinkText = (currentUser && (userRole === 'admin' || userRole === 'employee')) ? "Inventario" : "Catálogo";
+  const MainNavLinkIcon = (currentUser && (userRole === 'admin' || userRole === 'employee')) ? Archive : BookOpen;
+
+
   if (loading) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -56,8 +60,8 @@ export function Header() {
             <li>
               <Button variant="ghost" asChild>
                 <Link href="/" className="flex items-center px-2 py-1 sm:px-3 sm:py-2">
-                  <Archive className="mr-0 h-5 w-5 sm:mr-2" />
-                  <span className="hidden sm:inline">Inventario</span>
+                  <MainNavLinkIcon className="mr-0 h-5 w-5 sm:mr-2" />
+                  <span className="hidden sm:inline">{mainNavLinkText}</span>
                 </Link>
               </Button>
             </li>
