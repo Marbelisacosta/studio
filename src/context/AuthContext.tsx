@@ -5,9 +5,9 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, orderBy } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import type { UserRoleType, UserProfile } from '@/types';
+import type { UserRoleType, UserProfile, Order, OrderStatusType } from '@/types';
 
 
 interface AuthContextType {
@@ -17,6 +17,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUserRoleInFirestore: (uid: string, newRole: UserRoleType) => Promise<void>;
   getAllUsersFromFirestore: () => Promise<UserProfile[]>;
+  getOrdersFromFirestore: () => Promise<Order[]>;
+  updateOrderStatusInFirestore: (orderId: string, newStatus: OrderStatusType) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -77,16 +79,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const usersCollectionRef = collection(db, 'users');
       const querySnapshot = await getDocs(usersCollectionRef);
-      const usersList = querySnapshot.docs.map(docSnap => docSnap.data() as UserProfile);
-      return usersList.filter(user => user.uid); // Asegurar que el uid existe
+      const usersList = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as UserProfile));
+      return usersList.filter(user => user.uid); 
     } catch (error) {
       console.error("Error al obtener todos los usuarios de Firestore:", error);
       throw error;
     }
   };
+
+  const getOrdersFromFirestore = async (): Promise<Order[]> => {
+    try {
+      const ordersCollectionRef = collection(db, 'Orders');
+      // Ordenar por fecha, los más recientes primero (si tienes un campo de fecha adecuado)
+      const q = query(ordersCollectionRef, orderBy("orderDate", "desc"));
+      const querySnapshot = await getDocs(q);
+      const ordersList = querySnapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        // Convert Firestore Timestamp to Date if necessary, or handle as is
+        // For simplicity, ensure orderDate is usable. If it's a Firestore Timestamp,
+        // you might want to convert it to a JS Date object or a string here.
+        // For now, we'll pass it as is.
+        return { id: docSnap.id, ...data } as Order;
+      });
+      return ordersList;
+    } catch (error) {
+      console.error("Error al obtener los pedidos de Firestore:", error);
+      throw error;
+    }
+  };
+
+  const updateOrderStatusInFirestore = async (orderDocumentId: string, newStatus: OrderStatusType) => {
+    if (!orderDocumentId || !newStatus) throw new Error("ID del pedido y nuevo estado son requeridos.");
+    try {
+      const orderDocRef = doc(db, 'Orders', orderDocumentId);
+      await updateDoc(orderDocRef, { status: newStatus });
+      console.log(`Pedido ${orderDocumentId} actualizado con estado ${newStatus} en Firestore.`);
+    } catch (error) {
+      console.error("Error al actualizar el estado del pedido en Firestore:", error);
+      throw error;
+    }
+  };
   
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, loading, logout, updateUserRoleInFirestore, getAllUsersFromFirestore }}>
+    <AuthContext.Provider value={{ currentUser, userRole, loading, logout, updateUserRoleInFirestore, getAllUsersFromFirestore, getOrdersFromFirestore, updateOrderStatusInFirestore }}>
       {children}
     </AuthContext.Provider>
   );
@@ -104,7 +139,6 @@ export const registerUserWithRoleInFirestore = async (uid: string, email: string
   if (!uid || !role) throw new Error("UID y rol son requeridos para el registro en Firestore.");
   try {
     const userDocRef = doc(db, 'users', uid);
-    // Usar email: email ?? '' para evitar error si email es null.
     await setDoc(userDocRef, { uid, email: email ?? 'No disponible', role }, { merge: true });
     console.log(`Usuario ${uid} registrado con rol ${role} en Firestore.`);
   } catch (error) {

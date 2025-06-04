@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Briefcase, Edit3, PackageSearch, Truck } from "lucide-react";
+import { Briefcase, Edit3, PackageSearch, Truck, ClipboardList } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -40,10 +40,11 @@ export default function EmployeeDashboardPage() {
         <CardContent className="p-6 sm:p-8 space-y-6">
           <Alert variant="default" className="border-accent text-accent-foreground bg-accent/90">
             <Edit3 className="h-5 w-5 text-accent-foreground" />
-            <AlertTitle className="font-bold text-accent-foreground">Gestión de Inventario</AlertTitle>
+            <AlertTitle className="font-bold text-accent-foreground">Gestión de Inventario y Pedidos</AlertTitle>
             <AlertDescription className="text-accent-foreground/90">
-              Bienvenido, {currentUser.email}. Desde aquí podrás actualizar la información de stock de los productos (leyendo de Firestore y actualizando mediante Cloud Functions).
-              Navega al catálogo para ver los productos y usar la opción de actualizar.
+              Bienvenido, {currentUser.email}. Desde aquí podrás actualizar el stock de productos y procesar los pedidos de los clientes.
+              La actualización de stock se realiza directamente en Firestore (en producción, esto usaría Cloud Functions para validaciones adicionales).
+              La gestión de pedidos también interactúa con Firestore.
             </AlertDescription>
           </Alert>
           
@@ -53,21 +54,21 @@ export default function EmployeeDashboardPage() {
               <Button variant="default" asChild className="flex-1">
                 <Link href="/" className="flex items-center justify-center">
                   <PackageSearch className="mr-2 h-5 w-5" />
-                  Ir al Catálogo de Productos
+                  Ir al Catálogo de Productos (para actualizar stock)
                 </Link>
               </Button>
               <Button variant="outline" asChild className="flex-1">
                 <Link href="/employee/process-orders" className="flex items-center justify-center">
-                   <Truck className="mr-2 h-5 w-5" />
-                  Procesar Pedidos (Simulado)
+                   <ClipboardList className="mr-2 h-5 w-5" /> {/* Icono cambiado */}
+                  Procesar Pedidos
                 </Link>
               </Button>
             </div>
           </section>
 
            <p className="text-muted-foreground text-sm">
-            Este panel usa Firebase Authentication. Las funcionalidades como "Procesar Pedidos" y la actualización de stock
-            requerirían Cloud Functions y Firestore para su implementación completa.
+            Este panel utiliza Firebase Authentication. Las funcionalidades de actualización de stock y procesamiento de pedidos interactúan con Firestore.
+            En un entorno de producción completo, las operaciones críticas se gestionarían a través de Cloud Functions para mayor seguridad y lógica de negocio avanzada.
           </p>
         </CardContent>
       </Card>

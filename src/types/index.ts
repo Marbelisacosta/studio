@@ -18,3 +18,25 @@ export interface UserProfile {
   role: UserRoleType;
   // Add other profile fields as needed
 }
+
+// Tipos para Pedidos
+export type OrderStatusType = 'Pendiente' | 'En preparación' | 'Enviado' | 'Completado' | 'Cancelado';
+
+export interface OrderItem {
+  productId?: string; // Opcional, si queremos enlazar al producto
+  name: string;
+  quantity: number;
+  price?: string; // Precio por unidad en el momento del pedido
+}
+
+export interface Order {
+  id: string; // Firestore document ID
+  orderId: string; // ID legible del pedido, ej: ORD001
+  userId?: string; // ID del usuario que hizo el pedido (si aplica)
+  customerEmail: string;
+  items: OrderItem[];
+  totalAmount: string; // Monto total formateado
+  status: OrderStatusType;
+  orderDate: any; // Debería ser un Timestamp de Firestore, pero 'any' para flexibilidad en la lectura inicial
+  shippingAddress?: string;
+}
