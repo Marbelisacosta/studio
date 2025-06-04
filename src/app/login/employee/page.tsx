@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Briefcase, Loader2, KeyRound, ShieldCheck } from "lucide-react";
+import { Briefcase, Loader2, KeyRound, ShieldCheck, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 
-const EMPLOYEE_ACCESS_CODE = "EMPLEADOVIP2024"; // Código especial para empleados
+const EMPLOYEE_ACCESS_CODE = "EMPLEADOVIP2024"; 
 const EMPLOYEE_EMAIL = "empleado@example.com";
 const EMPLOYEE_PASSWORD = "empleadopass";
 
@@ -23,6 +23,7 @@ export default function EmployeeLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [step, setStep] = useState<'credentials' | 'code'>('credentials');
+  const [formMode, setFormMode] = useState<'login' | 'register'>('login');
   const router = useRouter();
   const { toast } = useToast();
 
@@ -40,12 +41,16 @@ export default function EmployeeLoginPage() {
     setIsLoading(true);
     setError(null);
 
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simular llamada API
+    await new Promise(resolve => setTimeout(resolve, 500)); 
 
-    if (email === EMPLOYEE_EMAIL && password === EMPLOYEE_PASSWORD) {
+    if (formMode === 'login') {
+      if (email === EMPLOYEE_EMAIL && password === EMPLOYEE_PASSWORD) {
+        setStep('code');
+      } else {
+        setError("Credenciales de empleado incorrectas.");
+      }
+    } else { // formMode === 'register'
       setStep('code');
-    } else {
-      setError("Credenciales de empleado incorrectas.");
     }
     setIsLoading(false);
   };
@@ -58,12 +63,12 @@ export default function EmployeeLoginPage() {
     setError(null);
     localStorage.removeItem('userRole');
 
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simular llamada API
+    await new Promise(resolve => setTimeout(resolve, 500)); 
 
     if (accessCode === EMPLOYEE_ACCESS_CODE) {
       localStorage.setItem('userRole', 'employee');
       toast({
-        title: "Inicio de sesión exitoso",
+        title: formMode === 'register' ? "Registro y acceso exitosos" : "Inicio de sesión exitoso",
         description: "Has ingresado como Empleado.",
         variant: "default",
       });
@@ -74,6 +79,13 @@ export default function EmployeeLoginPage() {
     setIsLoading(false);
   };
 
+  const resetFormAndError = () => {
+    setEmail('');
+    setPassword('');
+    setAccessCode('');
+    setError(null);
+  };
+
   if (!isClient) {
     return null;
   }
@@ -82,61 +94,97 @@ export default function EmployeeLoginPage() {
     <div className="container mx-auto flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md shadow-xl border">
         <CardHeader className="text-center">
-          <Briefcase className="mx-auto h-10 w-10 text-primary mb-3" />
-          <CardTitle className="text-3xl font-headline font-bold">Login Empleado</CardTitle>
-           {step === 'credentials' && <CardDescription className="mt-2">Ingresa tus credenciales de empleado.</CardDescription>}
-          {step === 'code' && <CardDescription className="mt-2">Verificación adicional: Ingresa tu Código de Acceso.</CardDescription>}
+          {formMode === 'login' ? (
+            <Briefcase className="mx-auto h-10 w-10 text-primary mb-3" />
+          ) : (
+            <UserPlus className="mx-auto h-10 w-10 text-primary mb-3" />
+          )}
+          <CardTitle className="text-3xl font-headline font-bold">
+            {formMode === 'login' ? 'Login Empleado' : 'Registro Empleado'}
+          </CardTitle>
+          {step === 'credentials' && (
+            <CardDescription className="mt-2">
+              {formMode === 'login' 
+                ? 'Ingresa tus credenciales de empleado.' 
+                : 'Completa tus datos para registrarte. Necesitarás un Código de Acceso para activar la cuenta.'}
+            </CardDescription>
+          )}
+          {step === 'code' && (
+            <CardDescription className="mt-2">
+              Verificación adicional: Ingresa tu Código de Acceso.
+              {formMode === 'register' && " Este código es necesario para activar tu nueva cuenta de empleado."}
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent className="pt-6">
           {step === 'credentials' && (
-            <form onSubmit={handleCredentialSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="empleado@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                  autoComplete="email"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                  autoComplete="current-password"
-                />
-              </div>
-              {error && (
-                <p className="text-sm text-destructive text-center">{error}</p>
-              )}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
+            <>
+              <form onSubmit={handleCredentialSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Correo Electrónico</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="empleado@example.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Contraseña</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                    autoComplete={formMode === 'login' ? "current-password" : "new-password"}
+                  />
+                </div>
+                {error && (
+                  <p className="text-sm text-destructive text-center">{error}</p>
+                )}
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {formMode === 'login' ? 'Verificando...' : 'Registrando...'}
+                    </>
+                  ) : (
+                    formMode === 'login' ? "Siguiente" : "Registrarse y Continuar"
+                  )}
+                </Button>
+              </form>
+              <p className="mt-6 text-center text-sm text-muted-foreground">
+                {formMode === 'login' ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Verificando...
+                    ¿No tienes cuenta?{' '}
+                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('register'); resetFormAndError(); }}>
+                      Regístrate aquí
+                    </Button>
                   </>
                 ) : (
-                  "Siguiente"
+                  <>
+                    ¿Ya tienes cuenta?{' '}
+                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('login'); resetFormAndError(); }}>
+                      Inicia Sesión
+                    </Button>
+                  </>
                 )}
-              </Button>
-            </form>
+              </p>
+            </>
           )}
 
           {step === 'code' && (
             <form onSubmit={handleCodeSubmit} className="space-y-6">
                <div className="flex items-center justify-center text-green-600 mb-4">
                 <ShieldCheck className="h-6 w-6 mr-2" />
-                <p>Credenciales validadas.</p>
+                <p>{formMode === 'login' ? 'Credenciales validadas.' : 'Datos de registro aceptados.'}</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="accessCode">
@@ -161,14 +209,14 @@ export default function EmployeeLoginPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Ingresando...
+                    {formMode === 'login' ? 'Ingresando...' : 'Activando cuenta...'}
                   </>
                 ) : (
-                  "Entrar como Empleado"
+                  formMode === 'login' ? "Entrar como Empleado" : "Activar y Entrar como Empleado"
                 )}
               </Button>
-              <Button variant="link" onClick={() => { setStep('credentials'); setError(null); setPassword('');}} className="w-full">
-                Volver a ingresar credenciales
+              <Button variant="link" onClick={() => { setStep('credentials'); setError(null); setAccessCode('');}} className="w-full text-muted-foreground">
+                Volver
               </Button>
             </form>
           )}
