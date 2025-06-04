@@ -6,7 +6,7 @@ import { ProductSearch } from '@/components/products/ProductSearch';
 import { ProductCard } from '@/components/products/ProductCard';
 import type { Product as ProductType } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { SearchIcon as SearchIconLucide, Terminal, ShoppingBag, InfoIcon, Loader2 } from "lucide-react";
+import { SearchIcon as SearchIconLucide, Terminal, Archive, InfoIcon, Loader2 } from "lucide-react"; // Archive en lugar de ShoppingBag
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
@@ -19,7 +19,7 @@ const FIRESTORE_COLLECTION_NAME = 'Productos';
 export default function HomePage() {
   const [productsToDisplay, setProductsToDisplay] = useState<ProductType[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
-  const [isSearchingAi, setIsSearchingAi] = useState(false); // Loading state for Genkit AI search
+  const [isSearchingAi, setIsSearchingAi] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   
@@ -27,7 +27,7 @@ export default function HomePage() {
   const [hasMoreProducts, setHasMoreProducts] = useState(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  const { currentUser, loading: authLoading } = useAuth();
+  const { currentUser, userRole, loading: authLoading } = useAuth();
 
   const fetchInitialProducts = useCallback(async (loadMore = false) => {
     if (!hasMoreProducts && loadMore) return; 
@@ -41,7 +41,6 @@ export default function HomePage() {
       if (loadMore && lastVisibleProduct) {
         q = firestoreQuery(productsCollectionRef, orderBy("name"), startAfter(lastVisibleProduct), limit(PRODUCTS_PER_PAGE));
       } else {
-        // For initial load or clearing search, reset productsToDisplay before fetching.
         if (!loadMore) setProductsToDisplay([]); 
         q = firestoreQuery(productsCollectionRef, orderBy("name"), limit(PRODUCTS_PER_PAGE));
       }
@@ -77,22 +76,20 @@ export default function HomePage() {
   const fetchProductsByNamesFromFirestore = async (names: string[]) => {
     if (names.length === 0) {
       setProductsToDisplay([]);
-      setSearchError(null); // Clear any previous errors
-      setIsLoadingProducts(false); // Ensure loading is false
-      setHasSearched(true); // Mark that a search was attempted
-      setHasMoreProducts(false); // No pagination for empty search results
+      setSearchError(null);
+      setIsLoadingProducts(false);
+      setHasSearched(true);
+      setHasMoreProducts(false);
       setInitialLoadComplete(true);
       return;
     }
 
     setIsLoadingProducts(true);
     setSearchError(null);
-    setProductsToDisplay([]); // Clear previous/paginated results
+    setProductsToDisplay([]);
 
     try {
       const productsRef = collection(db, FIRESTORE_COLLECTION_NAME);
-      // Firestore 'in' query can handle up to 30 elements.
-      // If AI returns more, we might need to batch, but for now, take the first 30.
       const q = firestoreQuery(productsRef, where('name', 'in', names.slice(0, 30)));
       const querySnapshot = await getDocs(q);
       const foundProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), stock: doc.data().stock ?? 0 } as ProductType));
@@ -104,73 +101,64 @@ export default function HomePage() {
     } finally {
       setIsLoadingProducts(false);
       setHasSearched(true);
-      setHasMoreProducts(false); // Search results are not paginated this way
+      setHasMoreProducts(false);
       setInitialLoadComplete(true);
     }
   };
 
   const handleAiSearchResults = (productNames: string[]) => {
-    // AI search is complete (isSearchingAi will be set to false by ProductSearch)
-    // Now, fetch these names from Firestore
     fetchProductsByNamesFromFirestore(productNames);
   };
 
   const handleSearchLoading = (loading: boolean) => {
     setIsSearchingAi(loading);
     if (loading) {
-      setHasSearched(true); // A search is being initiated
-      setProductsToDisplay([]); // Clear current products to show loading state
+      setHasSearched(true);
+      setProductsToDisplay([]);
       setSearchError(null);
-      setIsLoadingProducts(true); // Show skeletons while AI is searching too
-    } else {
-      // When AI search finishes, isLoadingProducts might still be true if we are fetching from Firestore
-      // It will be set to false in fetchProductsByNamesFromFirestore
+      setIsLoadingProducts(true);
     }
   };
 
   const handleSearchError = (error: string | null) => {
     setSearchError(error);
-    setHasSearched(true); // Mark that a search attempt was made, even if it failed
+    setHasSearched(true);
     setProductsToDisplay([]);
-    setIsLoadingProducts(false); // Stop loading if AI search itself errors out
+    setIsLoadingProducts(false);
   }
   
   const handleClearSearch = () => {
     setHasSearched(false);
     setSearchError(null);
     setLastVisibleProduct(null); 
-    setHasMoreProducts(true); // Allow pagination again
-    setInitialLoadComplete(false); // Trigger initial fetch
-    // fetchInitialProducts(false) will be called by the useEffect
+    setHasMoreProducts(true);
+    setInitialLoadComplete(false);
   }
 
   const displayProducts = productsToDisplay;
-  // Determine if skeletons should be shown:
-  // - If AI is searching (isSearchingAi)
-  // - Or if we are loading products from Firestore (isLoadingProducts) AND AI search is done.
   const showSkeletons = isSearchingAi || (isLoadingProducts && !isSearchingAi);
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
        <Alert variant="default" className="mb-8 bg-primary/10 border-primary/30">
           <InfoIcon className="h-5 w-5 text-primary" />
-          <AlertTitle className="font-bold text-primary">¡Bienvenido a Click Shop con Firebase!</AlertTitle>
+          <AlertTitle className="font-bold text-primary">Gestión de Inventario Click Shop con Firebase</AlertTitle>
           <AlertDescription className="text-primary/90">
-            Esta versión integra Firebase Authentication. Los roles se leen/escriben en Firestore (<code>users</code> colección).
-            Los productos se cargan desde Firestore (<code>{FIRESTORE_COLLECTION_NAME}</code> colección).
-            La actualización de stock (empleados) simula una llamada a Cloud Function actualizando Firestore.
-            <strong className="block mt-1">Importante:</strong> Configura tus credenciales de Firebase en <code>.env</code> y la API Key de Google AI para que Genkit funcione.
+            Esta aplicación te permite gestionar el stock de tus productos. Utiliza Firebase Authentication para los roles de usuario (empleado/admin)
+            y Firestore para almacenar los productos (<code>{FIRESTORE_COLLECTION_NAME}</code> colección) y los datos de usuario (<code>users</code> colección).
+            Las actualizaciones de stock (entradas/salidas) se realizan directamente en Firestore.
+            <strong className="block mt-1">Importante:</strong> Configura tus credenciales de Firebase en <code>.env</code> y la API Key de Google AI para que la búsqueda inteligente de productos funcione.
             Asegúrate de tener datos en tu colección <code>{FIRESTORE_COLLECTION_NAME}</code> de Firestore con campos <code>name (string)</code> y <code>stock (number)</code>.
           </AlertDescription>
         </Alert>
 
       <section className="mb-10 flex flex-col items-center">
-        <ShoppingBag className="h-16 w-16 text-primary mb-4" />
+        <Archive className="h-16 w-16 text-primary mb-4" />
         <h1 className="text-4xl font-headline font-bold mb-6 text-center text-foreground">
-          Encuentra Tu Producto Perfecto
+          Gestiona el Inventario de Productos
         </h1>
         <p className="text-lg text-muted-foreground mb-8 text-center max-w-2xl">
-          Usa nuestra búsqueda inteligente Genkit para obtener sugerencias, luego buscaremos en nuestro catálogo de Firestore.
+          Usa la búsqueda inteligente para encontrar productos rápidamente y actualiza sus niveles de stock (entradas/salidas).
         </p>
         <div className="flex w-full max-w-xl items-center space-x-2">
           <ProductSearch
@@ -205,11 +193,11 @@ export default function HomePage() {
          <div className="text-center text-muted-foreground py-10">
             <SearchIconLucide className="mx-auto h-12 w-12 mb-4" />
             <p className="text-xl font-semibold">
-              {hasSearched ? "No se encontraron productos para tu búsqueda en nuestro catálogo." : "No hay productos en el catálogo."}
+              {hasSearched ? "No se encontraron productos para tu búsqueda." : "No hay productos en el inventario."}
             </p>
             <p>
               {hasSearched 
-                ? "Intenta con diferentes palabras clave o revisa todos nuestros productos." 
+                ? "Intenta con diferentes palabras clave." 
                 : "Asegúrate de haber añadido productos a tu base de datos Firestore."}
             </p>
              {hasSearched && <Button variant="link" onClick={handleClearSearch}>Ver todos los productos</Button>}
@@ -219,7 +207,7 @@ export default function HomePage() {
       {!showSkeletons && displayProducts.length > 0 && (
         <section>
           <h2 className="text-3xl font-headline font-semibold mb-8 text-center text-foreground">
-            {hasSearched ? "Resultados de Búsqueda en Catálogo" : "Nuestro Catálogo"}
+            {hasSearched ? "Resultados de Búsqueda" : "Inventario de Productos"}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {displayProducts.map(product => (
@@ -235,7 +223,7 @@ export default function HomePage() {
             </div>
           )}
            {!hasSearched && !hasMoreProducts && initialLoadComplete && displayProducts.length > 0 && (
-             <p className="text-center text-muted-foreground mt-8">Has llegado al final de nuestro catálogo.</p>
+             <p className="text-center text-muted-foreground mt-8">Has llegado al final del inventario.</p>
            )}
         </section>
       )}
@@ -249,9 +237,9 @@ function CardSkeleton() {
       <Skeleton className="aspect-[3/2] w-full bg-muted" />
       <div className="p-4 space-y-3">
         <Skeleton className="h-6 w-3/4 bg-muted" />
-        <Skeleton className="h-4 w-1/2 bg-muted" />
-        <Skeleton className="h-4 w-1/3 bg-muted" /> {/* For stock */}
-        <Skeleton className="h-10 w-full bg-muted mt-2" /> {/* For badge and button area */}
+        <Skeleton className="h-4 w-1/2 bg-muted" /> {/* For product name */}
+        <Skeleton className="h-4 w-1/3 bg-muted" /> {/* For stock text */}
+        <Skeleton className="h-10 w-full bg-muted mt-2" /> {/* For button area */}
       </div>
     </div>
   );

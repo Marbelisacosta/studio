@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Briefcase, Edit3, PackageSearch, Truck, ClipboardList } from "lucide-react";
+import { Briefcase, Edit3, PackageSearch, ClipboardList, Archive } from "lucide-react"; // Archive
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -42,8 +42,8 @@ export default function EmployeeDashboardPage() {
             <Edit3 className="h-5 w-5 text-accent-foreground" />
             <AlertTitle className="font-bold text-accent-foreground">Gestión de Inventario y Pedidos</AlertTitle>
             <AlertDescription className="text-accent-foreground/90">
-              Bienvenido, {currentUser.email}. Desde aquí podrás actualizar el stock de productos y procesar los pedidos de los clientes.
-              La actualización de stock se realiza directamente en Firestore (en producción, esto usaría Cloud Functions para validaciones adicionales).
+              Bienvenido, {currentUser.email}. Desde aquí podrás gestionar el inventario (entradas/salidas de stock) y procesar los pedidos de los clientes.
+              Las actualizaciones de stock se realizan directamente en Firestore (idealmente, en producción, esto usaría Cloud Functions para validaciones adicionales).
               La gestión de pedidos también interactúa con Firestore.
             </AlertDescription>
           </Alert>
@@ -53,13 +53,13 @@ export default function EmployeeDashboardPage() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Button variant="default" asChild className="flex-1">
                 <Link href="/" className="flex items-center justify-center">
-                  <PackageSearch className="mr-2 h-5 w-5" />
-                  Ir al Catálogo de Productos (para actualizar stock)
+                  <Archive className="mr-2 h-5 w-5" /> {/* Icono cambiado */}
+                  Gestionar Inventario de Productos
                 </Link>
               </Button>
               <Button variant="outline" asChild className="flex-1">
                 <Link href="/employee/process-orders" className="flex items-center justify-center">
-                   <ClipboardList className="mr-2 h-5 w-5" /> {/* Icono cambiado */}
+                   <ClipboardList className="mr-2 h-5 w-5" />
                   Procesar Pedidos
                 </Link>
               </Button>

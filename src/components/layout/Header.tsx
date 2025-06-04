@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag, Info, User, LogOut, LayoutDashboard } from 'lucide-react';
+import { Archive, Info, User, LogOut, LayoutDashboard } from 'lucide-react'; // Archive en lugar de ShoppingBag
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 
@@ -56,8 +56,8 @@ export function Header() {
             <li>
               <Button variant="ghost" asChild>
                 <Link href="/" className="flex items-center px-2 py-1 sm:px-3 sm:py-2">
-                  <ShoppingBag className="mr-0 h-5 w-5 sm:mr-2" />
-                  <span className="hidden sm:inline">Productos</span>
+                  <Archive className="mr-0 h-5 w-5 sm:mr-2" />
+                  <span className="hidden sm:inline">Inventario</span>
                 </Link>
               </Button>
             </li>

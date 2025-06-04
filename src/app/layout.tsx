@@ -7,8 +7,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
-  title: 'Catálogo Click Shop',
-  description: 'Tu solución minimalista de comercio electrónico para explorar productos.',
+  title: 'Gestión de Inventario Click Shop',
+  description: 'Tu solución para la gestión eficiente de inventario de productos.',
 };
 
 export default function RootLayout({

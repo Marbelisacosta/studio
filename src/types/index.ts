@@ -2,9 +2,9 @@
 export interface Product {
   id: string; // Firestore document ID
   name: string;
-  price?: string; // Formatted string e.g., "$19.99"
+  price?: string; // Formatted string e.g., "$19.99" - Ahora opcional
   stock: number; // Actual stock count, ensure this is always a number
-  availability?: 'En Stock' | 'Agotado' | 'Poco Stock'; // This could be derived from stock count
+  availability?: 'En Stock' | 'Agotado' | 'Poco Stock'; // Derivado del stock, ahora opcional
   imageUrl?: string;
   description?: string; 
   dataAiHint?: string; 
