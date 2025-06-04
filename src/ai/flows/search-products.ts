@@ -30,11 +30,14 @@ const prompt = ai.definePrompt({
   name: 'searchProductsPrompt',
   input: {schema: SearchProductsInputSchema},
   output: {schema: SearchProductsOutputSchema},
-  prompt: `Eres un asistente de búsqueda de productos para una tienda en línea.
+  prompt: `Eres un asistente de búsqueda de productos para una tienda en línea. Tu objetivo es ayudar al usuario a encontrar productos en nuestro catálogo.
+Basado en la consulta del usuario, proporciona una lista de nombres de productos en español que coincidan con la consulta.
+Si la consulta del usuario parece ser un nombre de producto específico, asegúrate de incluir ese nombre exacto en tu lista de resultados.
+Intenta también incluir variaciones comunes de capitalización si es relevante.
+Por ejemplo, si el usuario busca "zapato azul", podrías sugerir ["zapato azul", "Zapato Azul"].
+Si el usuario busca "Mi Super Producto", sugiere ["Mi Super Producto"].
 
-  Basado en la consulta del usuario, proporciona una lista de nombres de productos en español que coincidan con la consulta.
-
-  Consulta: {{{query}}}
+Consulta: {{{query}}}
   `,
 });
 
@@ -46,6 +49,23 @@ const searchProductsFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    let productsFromAI = output?.products || [];
+
+    // Asegurar que la consulta original y sus variaciones de capitalización comunes se busquen:
+    const queryVariations = new Set<string>(productsFromAI);
+    if (input.query && input.query.trim() !== '') {
+      queryVariations.add(input.query); // Original
+      queryVariations.add(input.query.toLowerCase()); // minúsculas
+      queryVariations.add(input.query.toUpperCase()); // MAYÚSCULAS
+      queryVariations.add(
+        input.query
+          .toLowerCase()
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ')
+      ); // Tipo Título
+    }
+    
+    return { products: Array.from(queryVariations).filter(p => p.trim() !== '') };
   }
 );
