@@ -10,58 +10,88 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { useAuth, registerUserWithRoleInFirestore } from '@/context/AuthContext';
 
 export default function ClientLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
+  const [formMode, setFormMode] = useState<'login' | 'register'>('login');
+
   const router = useRouter();
   const { toast } = useToast();
+  const { currentUser, userRole, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    setIsClient(true);
-    if (typeof window !== 'undefined' && localStorage.getItem('userRole') === 'client') {
+    if (!authLoading && currentUser && userRole === 'client') {
       router.push('/');
     }
-  }, [router]);
+  }, [currentUser, userRole, authLoading, router]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!isClient) return;
-
     setIsLoading(true);
     setError(null);
-    localStorage.removeItem('userRole');
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    if (email === "cliente@example.com" && password === "clientepass") {
-      localStorage.setItem('userRole', 'client');
+    try {
+      let userCredential;
+      if (formMode === 'login') {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        // For clients, role is directly registered/updated upon login if not present
+        // This assumes a client role by default if they log in via this page.
+        await registerUserWithRoleInFirestore(userCredential.user.uid, userCredential.user.email, 'client');
+      } else { // formMode === 'register'
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await registerUserWithRoleInFirestore(userCredential.user.uid, userCredential.user.email, 'client');
+        // Sign in the new user
+        await signInWithEmailAndPassword(auth, email, password);
+      }
       toast({
-        title: "Inicio de sesión exitoso",
+        title: formMode === 'login' ? "Inicio de sesión exitoso" : "Registro exitoso",
         description: "Has ingresado como Cliente.",
       });
-      router.push('/');
-    } else {
-      setError("Credenciales de cliente incorrectas.");
+      router.push('/'); 
+    } catch (err: any) {
+       setError(err.message || "Error en credenciales o registro.");
+        if (err.code === 'auth/user-not-found' && formMode === 'login') {
+            setError("Cliente no encontrado. ¿Deseas registrarte?");
+        } else if (err.code === 'auth/wrong-password' && formMode === 'login') {
+            setError("Contraseña incorrecta.");
+        } else if (err.code === 'auth/email-already-in-use' && formMode === 'register'){
+            setError("Este correo ya está registrado. ¿Deseas iniciar sesión?");
+        }
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
-  if (!isClient) {
-    return null;
+  const resetFormAndError = () => {
+    // Keep email/password
+    setError(null);
+  };
+
+  if (authLoading) {
+    return <div className="flex justify-center items-center min-h-screen">Verificando sesión...</div>;
   }
+   if (!authLoading && currentUser && userRole === 'client') {
+     return <div className="flex justify-center items-center min-h-screen">Redirigiendo...</div>;
+  }
+
 
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md shadow-xl border">
         <CardHeader className="text-center">
           <UserIcon className="mx-auto h-10 w-10 text-primary mb-3" />
-          <CardTitle className="text-3xl font-headline font-bold">Login Cliente</CardTitle>
-          <CardDescription className="mt-2">Ingresa tus credenciales de cliente.</CardDescription>
+          <CardTitle className="text-3xl font-headline font-bold">
+            {formMode === 'login' ? 'Login Cliente' : 'Registro Cliente'}
+          </CardTitle>
+          <CardDescription className="mt-2">
+            {formMode === 'login' ? 'Ingresa tus credenciales.' : 'Crea tu cuenta para empezar a comprar.'}
+          </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -88,7 +118,7 @@ export default function ClientLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
-                autoComplete="current-password"
+                autoComplete={formMode === 'login' ? "current-password" : "new-password"}
               />
             </div>
             {error && (
@@ -98,18 +128,29 @@ export default function ClientLoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Ingresando...
+                  {formMode === 'login' ? 'Ingresando...' : 'Registrando...'}
                 </>
               ) : (
-                "Entrar como Cliente"
+                formMode === 'login' ? 'Entrar como Cliente' : 'Registrarse'
               )}
             </Button>
           </form>
-          <p className="mt-8 text-center text-sm text-muted-foreground">
-            ¿No tienes una cuenta?{" "}
-            <Link href="#" className="font-semibold text-primary hover:underline">
-              Regístrate aquí
-            </Link>
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            {formMode === 'login' ? (
+              <>
+                ¿No tienes cuenta?{' '}
+                <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('register'); resetFormAndError(); }}>
+                  Regístrate aquí
+                </Button>
+              </>
+            ) : (
+              <>
+                ¿Ya tienes cuenta?{' '}
+                <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('login'); resetFormAndError();}}>
+                  Inicia Sesión
+                </Button>
+              </>
+            )}
           </p>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             <Link href="/login" className="font-semibold text-primary hover:underline">

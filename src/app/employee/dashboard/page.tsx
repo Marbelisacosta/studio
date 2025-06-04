@@ -1,30 +1,29 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Briefcase, Edit3, PackageSearch, Truck } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function EmployeeDashboardPage() {
   const router = useRouter();
-  const [isClient, setIsClient] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { currentUser, userRole, loading } = useAuth();
 
   useEffect(() => {
-    setIsClient(true);
-    const role = localStorage.getItem('userRole');
-    setUserRole(role);
-    if (role !== 'employee') {
-      router.push('/login');
+    if (!loading) {
+      if (!currentUser || userRole !== 'employee') {
+        router.push('/login');
+      }
     }
-  }, [router]);
+  }, [currentUser, userRole, loading, router]);
 
-  if (!isClient || userRole !== 'employee') {
-    return <div className="flex justify-center items-center min-h-screen">Cargando...</div>;
+  if (loading || !currentUser || userRole !== 'employee') {
+     return <div className="flex justify-center items-center min-h-screen">Cargando y verificando acceso...</div>;
   }
 
   return (
@@ -43,7 +42,7 @@ export default function EmployeeDashboardPage() {
             <Edit3 className="h-5 w-5 text-accent-foreground" />
             <AlertTitle className="font-bold text-accent-foreground">Gestión de Inventario</AlertTitle>
             <AlertDescription className="text-accent-foreground/90">
-              Desde aquí podrás actualizar la información de stock de los productos. 
+              Bienvenido, {currentUser.email}. Desde aquí podrás actualizar la información de stock de los productos (leyendo de Firestore y actualizando mediante Cloud Functions).
               Navega al catálogo para ver los productos y usar la opción de actualizar.
             </AlertDescription>
           </Alert>
@@ -60,15 +59,15 @@ export default function EmployeeDashboardPage() {
               <Button variant="outline" asChild className="flex-1">
                 <Link href="/employee/process-orders" className="flex items-center justify-center">
                    <Truck className="mr-2 h-5 w-5" />
-                  Procesar Pedidos
+                  Procesar Pedidos (Simulado)
                 </Link>
               </Button>
             </div>
           </section>
 
            <p className="text-muted-foreground text-sm">
-            Este es un panel de control simulado para empleados. Las funcionalidades como "Procesar Pedidos" requerirían desarrollo de backend. 
-            La actualización de stock se simula en las tarjetas de producto del catálogo.
+            Este panel usa Firebase Authentication. Las funcionalidades como "Procesar Pedidos" y la actualización de stock
+            requerirían Cloud Functions y Firestore para su implementación completa.
           </p>
         </CardContent>
       </Card>

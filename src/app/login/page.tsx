@@ -7,14 +7,14 @@ import { UserCog, Briefcase, User as UserIcon, LogIn } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function RoleSelectionPage() {
   const router = useRouter();
+  const { currentUser, userRole, loading } = useAuth();
 
   useEffect(() => {
-    // Si ya hay un rol, redirigir al dashboard apropiado o a la home
-    if (typeof window !== 'undefined') {
-      const userRole = localStorage.getItem('userRole');
+    if (!loading && currentUser) {
       if (userRole === 'admin') {
         router.push('/admin/dashboard');
       } else if (userRole === 'employee') {
@@ -22,8 +22,21 @@ export default function RoleSelectionPage() {
       } else if (userRole === 'client') {
         router.push('/');
       }
+      // If role is null but user is logged in, they might stay or be redirected
+      // depending on app logic (e.g., to a profile completion page).
+      // For now, if a known role exists, redirect.
     }
-  }, [router]);
+  }, [currentUser, userRole, loading, router]);
+
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-screen">Cargando...</div>;
+  }
+  
+  // Avoid showing selection if user is logged in and has a role (should have been redirected)
+  if (currentUser && userRole) {
+     return <div className="flex justify-center items-center min-h-screen">Redirigiendo...</div>;
+  }
+
 
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8">

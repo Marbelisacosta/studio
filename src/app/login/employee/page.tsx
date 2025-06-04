@@ -10,10 +10,11 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, User } from 'firebase/auth';
+import { useAuth, registerUserWithRoleInFirestore } from '@/context/AuthContext';
 
 const EMPLOYEE_ACCESS_CODE = "EMPLEADOVIP2024"; 
-const EMPLOYEE_EMAIL = "empleado@example.com";
-const EMPLOYEE_PASSWORD = "empleadopass";
 
 export default function EmployeeLoginPage() {
   const [email, setEmail] = useState('');
@@ -21,73 +22,103 @@ export default function EmployeeLoginPage() {
   const [accessCode, setAccessCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
   const [step, setStep] = useState<'credentials' | 'code'>('credentials');
   const [formMode, setFormMode] = useState<'login' | 'register'>('login');
+  
   const router = useRouter();
   const { toast } = useToast();
+  const { currentUser, userRole, loading: authLoading } = useAuth();
+  const [tempUser, setTempUser] = useState<User | null>(null);
+
 
   useEffect(() => {
-    setIsClient(true);
-     if (typeof window !== 'undefined' && localStorage.getItem('userRole') === 'employee') {
+    if (!authLoading && currentUser && userRole === 'employee') {
       router.push('/employee/dashboard');
     }
-  }, [router]);
+  }, [currentUser, userRole, authLoading, router]);
 
   const handleCredentialSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!isClient) return;
-
     setIsLoading(true);
     setError(null);
 
-    await new Promise(resolve => setTimeout(resolve, 500)); 
-
-    if (formMode === 'login') {
-      if (email === EMPLOYEE_EMAIL && password === EMPLOYEE_PASSWORD) {
+    try {
+      if (formMode === 'login') {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        setTempUser(userCredential.user);
         setStep('code');
-      } else {
-        setError("Credenciales de empleado incorrectas.");
+      } else { // formMode === 'register'
+        setStep('code'); // Proceed to code verification after "registering" credentials
       }
-    } else { // formMode === 'register'
-      setStep('code');
+    } catch (err: any) {
+      setError(err.message || "Error en credenciales.");
+       if (err.code === 'auth/user-not-found' && formMode === 'login') {
+        setError("Empleado no encontrado. ¿Deseas registrarte?");
+      } else if (err.code === 'auth/wrong-password' && formMode === 'login') {
+        setError("Contraseña incorrecta.");
+      } else if (err.code === 'auth/email-already-in-use' && formMode === 'register'){
+         setError("Este correo ya está registrado. ¿Deseas iniciar sesión?");
+      }
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
   
   const handleCodeSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!isClient) return;
-
     setIsLoading(true);
     setError(null);
-    localStorage.removeItem('userRole');
 
-    await new Promise(resolve => setTimeout(resolve, 500)); 
+    if (accessCode !== EMPLOYEE_ACCESS_CODE) {
+      setError("Código de Acceso Empleado incorrecto.");
+      setIsLoading(false);
+      return;
+    }
 
-    if (accessCode === EMPLOYEE_ACCESS_CODE) {
-      localStorage.setItem('userRole', 'employee');
+    try {
+      let targetUser = tempUser;
+
+      if (formMode === 'register') {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        targetUser = userCredential.user;
+        await registerUserWithRoleInFirestore(targetUser.uid, targetUser.email, 'employee');
+        await signInWithEmailAndPassword(auth, email, password); 
+      } else if (targetUser) { // Login mode
+         await registerUserWithRoleInFirestore(targetUser.uid, targetUser.email, 'employee');
+      } else {
+        setError("Error inesperado. Por favor, intenta de nuevo desde el paso de credenciales.");
+        setIsLoading(false);
+        setStep('credentials');
+        return;
+      }
+      
       toast({
-        title: formMode === 'register' ? "Registro y acceso exitosos" : "Inicio de sesión exitoso",
+        title: formMode === 'register' ? "Registro y activación exitosos" : "Acceso de empleado concedido",
         description: "Has ingresado como Empleado.",
         variant: "default",
       });
       router.push('/employee/dashboard');
-    } else {
-      setError("Código de Acceso Empleado incorrecto.");
+    } catch (err: any) {
+      setError(err.message || "Error al verificar código o finalizar registro.");
+      if (err.code === 'auth/email-already-in-use' && formMode === 'register'){
+        setError("Este correo ya está en uso. Intenta iniciar sesión.");
+      }
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const resetFormAndError = () => {
-    setEmail('');
-    setPassword('');
     setAccessCode('');
     setError(null);
+    setTempUser(null);
   };
 
-  if (!isClient) {
-    return null;
+  if (authLoading) {
+    return <div className="flex justify-center items-center min-h-screen">Verificando sesión...</div>;
+  }
+  if (!authLoading && currentUser && userRole === 'employee') {
+     return <div className="flex justify-center items-center min-h-screen">Redirigiendo al panel...</div>;
   }
 
   return (
@@ -106,7 +137,7 @@ export default function EmployeeLoginPage() {
             <CardDescription className="mt-2">
               {formMode === 'login' 
                 ? 'Ingresa tus credenciales de empleado.' 
-                : 'Completa tus datos para registrarte. Necesitarás un Código de Acceso para activar la cuenta.'}
+                : 'Completa tus datos para registrarte. Necesitarás un Código de Acceso.'}
             </CardDescription>
           )}
           {step === 'code' && (
@@ -153,7 +184,7 @@ export default function EmployeeLoginPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {formMode === 'login' ? 'Verificando...' : 'Registrando...'}
+                      {formMode === 'login' ? 'Verificando...' : 'Siguiente...'}
                     </>
                   ) : (
                     formMode === 'login' ? "Siguiente" : "Registrarse y Continuar"
@@ -164,14 +195,14 @@ export default function EmployeeLoginPage() {
                 {formMode === 'login' ? (
                   <>
                     ¿No tienes cuenta?{' '}
-                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('register'); resetFormAndError(); }}>
+                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('register'); resetFormAndError(); setStep('credentials');}}>
                       Regístrate aquí
                     </Button>
                   </>
                 ) : (
                   <>
                     ¿Ya tienes cuenta?{' '}
-                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('login'); resetFormAndError(); }}>
+                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('login'); resetFormAndError(); setStep('credentials'); }}>
                       Inicia Sesión
                     </Button>
                   </>
@@ -184,7 +215,7 @@ export default function EmployeeLoginPage() {
             <form onSubmit={handleCodeSubmit} className="space-y-6">
                <div className="flex items-center justify-center text-green-600 mb-4">
                 <ShieldCheck className="h-6 w-6 mr-2" />
-                <p>{formMode === 'login' ? 'Credenciales validadas.' : 'Datos de registro aceptados.'}</p>
+                <p>{formMode === 'login' ? 'Credenciales validadas.' : 'Verifica tu intención de ser empleado.'}</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="accessCode">
@@ -209,14 +240,14 @@ export default function EmployeeLoginPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {formMode === 'login' ? 'Ingresando...' : 'Activando cuenta...'}
+                    {formMode === 'login' ? 'Verificando Código...' : 'Activando Cuenta Empleado...'}
                   </>
                 ) : (
                   formMode === 'login' ? "Entrar como Empleado" : "Activar y Entrar como Empleado"
                 )}
               </Button>
-              <Button variant="link" onClick={() => { setStep('credentials'); setError(null); setAccessCode('');}} className="w-full text-muted-foreground">
-                Volver
+              <Button variant="link" onClick={() => { setStep('credentials'); resetFormAndError();}} className="w-full text-muted-foreground">
+                Volver a credenciales
               </Button>
             </form>
           )}

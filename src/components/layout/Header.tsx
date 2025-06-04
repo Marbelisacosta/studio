@@ -5,43 +5,47 @@ import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { ShoppingBag, Info, User, LogOut, LayoutDashboard } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 
 export function Header() {
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
-  const router = useRouter();
-  const pathname = usePathname();
+  const { currentUser, userRole, logout, loading } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    setIsClient(true);
-    if (typeof window !== 'undefined') {
-      setUserRole(localStorage.getItem('userRole'));
-    }
-  }, [pathname]); // Re-check role on pathname change
-
-  const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('userRole');
-      setUserRole(null);
+  const handleLogout = async () => {
+    try {
+      await logout();
       toast({
         title: "Cierre de sesión exitoso",
         description: "Has cerrado tu sesión.",
       });
-      router.push('/login');
+    } catch (error) {
+       toast({
+        title: "Error al cerrar sesión",
+        description: (error as Error).message || "Ocurrió un problema.",
+        variant: "destructive",
+      });
     }
   };
 
   const getDashboardLink = () => {
     if (userRole === 'admin') return '/admin/dashboard';
     if (userRole === 'employee') return '/employee/dashboard';
-    return null;
+    return null; 
   }
 
   const dashboardLink = getDashboardLink();
+
+  if (loading) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Logo />
+          <div className="h-8 w-24 bg-muted rounded animate-pulse"></div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -65,7 +69,7 @@ export function Header() {
                 </Link>
               </Button>
             </li>
-            {isClient && userRole && dashboardLink && (
+            {currentUser && dashboardLink && (
                <li>
                 <Button variant="ghost" asChild>
                   <Link href={dashboardLink} className="flex items-center px-2 py-1 sm:px-3 sm:py-2">
@@ -75,7 +79,7 @@ export function Header() {
                 </Button>
               </li>
             )}
-            {isClient && userRole ? (
+            {currentUser ? (
               <li>
                 <Button variant="ghost" onClick={handleLogout} className="flex items-center px-2 py-1 sm:px-3 sm:py-2">
                   <LogOut className="mr-0 h-5 w-5 sm:mr-2" />

@@ -10,10 +10,11 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, User } from 'firebase/auth';
+import { useAuth, registerUserWithRoleInFirestore } from '@/context/AuthContext';
 
 const MASTER_ADMIN_CODE = "SUPERADMIN2024"; 
-const ADMIN_EMAIL = "admin@example.com";
-const ADMIN_PASSWORD = "adminpass";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -21,76 +22,112 @@ export default function AdminLoginPage() {
   const [adminCode, setAdminCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
   const [step, setStep] = useState<'credentials' | 'code'>('credentials');
   const [formMode, setFormMode] = useState<'login' | 'register'>('login');
+  
   const router = useRouter();
   const { toast } = useToast();
+  const { currentUser, userRole, loading: authLoading } = useAuth();
+  const [tempUser, setTempUser] = useState<User | null>(null); // To hold user after credential step in register mode
 
   useEffect(() => {
-    setIsClient(true);
-    if (typeof window !== 'undefined' && localStorage.getItem('userRole') === 'admin') {
+    if (!authLoading && currentUser && userRole === 'admin') {
       router.push('/admin/dashboard');
     }
-  }, [router]);
+  }, [currentUser, userRole, authLoading, router]);
 
   const handleCredentialSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!isClient) return;
-
     setIsLoading(true);
     setError(null);
     
-    await new Promise(resolve => setTimeout(resolve, 500)); 
-
-    if (formMode === 'login') {
-      if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    try {
+      if (formMode === 'login') {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        setTempUser(userCredential.user); // Store user for code step
+        // Role check will happen via AuthContext and redirect if already admin.
         setStep('code');
-      } else {
-        setError("Credenciales de administrador incorrectas.");
+      } else { // formMode === 'register'
+        // For registration, we don't sign in yet. Just proceed to code verification.
+        // User creation will happen after code verification.
+        setStep('code'); 
       }
-    } else { // formMode === 'register'
-      // Para el registro, asumimos que las credenciales son nuevas y válidas (simulación)
-      // y procedemos directamente a la verificación con código.
-      setStep('code');
+    } catch (err: any) {
+      setError(err.message || "Error en credenciales.");
+      if (err.code === 'auth/user-not-found' && formMode === 'login') {
+        setError("Administrador no encontrado. ¿Deseas registrarte?");
+      } else if (err.code === 'auth/wrong-password' && formMode === 'login') {
+        setError("Contraseña incorrecta.");
+      } else if (err.code === 'auth/email-already-in-use' && formMode === 'register'){
+        setError("Este correo ya está registrado. ¿Deseas iniciar sesión?");
+      }
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleCodeSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!isClient) return;
-
     setIsLoading(true);
     setError(null);
-    localStorage.removeItem('userRole'); 
 
-    await new Promise(resolve => setTimeout(resolve, 500)); 
+    if (adminCode !== MASTER_ADMIN_CODE) {
+      setError("Código Maestro de Administrador incorrecto.");
+      setIsLoading(false);
+      return;
+    }
 
-    if (adminCode === MASTER_ADMIN_CODE) {
-      localStorage.setItem('userRole', 'admin');
+    try {
+      let targetUser = tempUser; // User from login step or null if register mode
+
+      if (formMode === 'register') {
+        // Create user in Firebase Auth NOW, then register role in Firestore
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        targetUser = userCredential.user;
+        await registerUserWithRoleInFirestore(targetUser.uid, targetUser.email, 'admin');
+        // Sign in the new user after successful registration and code verification
+        await signInWithEmailAndPassword(auth, email, password); 
+      } else if (targetUser) { // Login mode, and user from login step exists
+        await registerUserWithRoleInFirestore(targetUser.uid, targetUser.email, 'admin');
+      } else {
+        // Fallback if tempUser is somehow null in login mode (should not happen)
+        setError("Error inesperado. Por favor, intenta de nuevo desde el paso de credenciales.");
+        setIsLoading(false);
+        setStep('credentials');
+        return;
+      }
+      
       toast({
-        title: formMode === 'register' ? "Registro y acceso exitosos" : "Inicio de sesión exitoso",
+        title: formMode === 'register' ? "Registro y activación exitosos" : "Acceso de administrador concedido",
         description: "Has ingresado como Administrador.",
         variant: "default",
       });
-      router.push('/admin/dashboard');
-    } else {
-      setError("Código Maestro de Administrador incorrecto.");
+      router.push('/admin/dashboard'); // AuthProvider will pick up the role and redirect.
+    } catch (err: any) {
+      setError(err.message || "Error al verificar código o finalizar registro.");
+       if (err.code === 'auth/email-already-in-use' && formMode === 'register'){
+        setError("Este correo ya está en uso. Intenta iniciar sesión.");
+      }
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
   
   const resetFormAndError = () => {
-    setEmail('');
-    setPassword('');
-    setAdminCode(''); // También limpia el código si vuelven atrás desde el paso de código
+    // Keep email/password if switching from register to login for convenience
+    // setPassword(''); 
+    setAdminCode('');
     setError(null);
+    setTempUser(null);
   };
 
-  if (!isClient) {
-    return null; 
+  if (authLoading) {
+    return <div className="flex justify-center items-center min-h-screen">Verificando sesión...</div>;
   }
+  if (!authLoading && currentUser && userRole === 'admin') {
+     return <div className="flex justify-center items-center min-h-screen">Redirigiendo al panel...</div>;
+  }
+
 
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
@@ -108,7 +145,7 @@ export default function AdminLoginPage() {
             <CardDescription className="mt-2">
               {formMode === 'login' 
                 ? 'Ingresa tus credenciales de administrador.' 
-                : 'Completa tus datos para registrarte. Necesitarás un Código Maestro para activar la cuenta.'}
+                : 'Completa tus datos para registrarte. Necesitarás un Código Maestro.'}
             </CardDescription>
           )}
           {step === 'code' && (
@@ -155,7 +192,7 @@ export default function AdminLoginPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {formMode === 'login' ? 'Verificando...' : 'Registrando...'}
+                      {formMode === 'login' ? 'Verificando...' : 'Siguiente...'}
                     </>
                   ) : (
                     formMode === 'login' ? "Siguiente" : "Registrarse y Continuar"
@@ -166,14 +203,14 @@ export default function AdminLoginPage() {
                 {formMode === 'login' ? (
                   <>
                     ¿No tienes cuenta?{' '}
-                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('register'); resetFormAndError(); }}>
+                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('register'); resetFormAndError(); setStep('credentials'); }}>
                       Regístrate aquí
                     </Button>
                   </>
                 ) : (
                   <>
                     ¿Ya tienes cuenta?{' '}
-                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('login'); resetFormAndError(); }}>
+                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => { setFormMode('login'); resetFormAndError(); setStep('credentials'); }}>
                       Inicia Sesión
                     </Button>
                   </>
@@ -186,7 +223,7 @@ export default function AdminLoginPage() {
             <form onSubmit={handleCodeSubmit} className="space-y-6">
               <div className="flex items-center justify-center text-green-600 mb-4">
                 <ShieldCheck className="h-6 w-6 mr-2" />
-                <p>{formMode === 'login' ? 'Credenciales validadas.' : 'Datos de registro aceptados.'}</p>
+                <p>{formMode === 'login' ? 'Credenciales validadas.' : 'Verifica tu intención de ser administrador.'}</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="adminCode">
@@ -211,14 +248,14 @@ export default function AdminLoginPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {formMode === 'login' ? 'Ingresando...' : 'Activando cuenta...'}
+                    {formMode === 'login' ? 'Verificando Código...' : 'Activando Cuenta Admin...'}
                   </>
                 ) : (
                   formMode === 'login' ? "Entrar como Admin" : "Activar y Entrar como Admin"
                 )}
               </Button>
-               <Button variant="link" onClick={() => { setStep('credentials'); setError(null); setAdminCode('');}} className="w-full text-muted-foreground">
-                Volver
+               <Button variant="link" onClick={() => { setStep('credentials'); resetFormAndError();}} className="w-full text-muted-foreground">
+                Volver a credenciales
               </Button>
             </form>
           )}
