@@ -9,7 +9,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const isAvailable = product.availability === 'In Stock' || product.availability === 'Low Stock';
+  const isAvailable = product.availability === 'En Stock' || product.availability === 'Poco Stock';
   const placeholderImage = "https://placehold.co/300x200.png";
 
   return (
@@ -22,7 +22,7 @@ export function ProductCard({ product }: ProductCardProps) {
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
             className="object-cover"
-            data-ai-hint={product.dataAiHint || product.name.split(' ').slice(0,2).join(' ').toLowerCase() || "product item"}
+            data-ai-hint={product.dataAiHint || product.name.split(' ').slice(0,2).join(' ').toLowerCase() || "articulo producto"}
             onError={(e) => { e.currentTarget.srcset = placeholderImage; e.currentTarget.src = placeholderImage; }}
           />
         ) : (

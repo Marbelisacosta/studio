@@ -30,11 +30,11 @@ const prompt = ai.definePrompt({
   name: 'searchProductsPrompt',
   input: {schema: SearchProductsInputSchema},
   output: {schema: SearchProductsOutputSchema},
-  prompt: `You are a product search assistant for an online store.
+  prompt: `Eres un asistente de búsqueda de productos para una tienda en línea.
 
-  Based on the user's query, provide a list of product names that match the query.
+  Basado en la consulta del usuario, proporciona una lista de nombres de productos en español que coincidan con la consulta.
 
-  Query: {{{query}}}
+  Consulta: {{{query}}}
   `,
 });
 

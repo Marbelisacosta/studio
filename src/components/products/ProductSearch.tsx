@@ -27,18 +27,29 @@ export function ProductSearch({ onResults, onLoading, onError, isLoading }: Prod
     try {
       const input: SearchProductsInput = { query };
       const output = await searchProducts(input);
-      const products = output.products.map((name, index) => ({
-        id: `${name.replace(/\s+/g, '-').toLowerCase()}-${index}`,
-        name,
-        price: `$${(Math.random() * 100 + 10).toFixed(2)}`, // Placeholder price
-        availability: Math.random() > 0.3 ? 'In Stock' : 'Out of Stock', // Placeholder availability
-        imageUrl: `https://placehold.co/300x200.png`, // Placeholder image
-        dataAiHint: name.split(' ').slice(0,2).join(' ').toLowerCase() || 'product fashion', // Placeholder AI hint
-      }));
+      const products = output.products.map((name, index) => {
+        const randomAvailability = Math.random();
+        let availabilityText: Product['availability'];
+        if (randomAvailability > 0.6) {
+          availabilityText = 'En Stock';
+        } else if (randomAvailability > 0.2) {
+          availabilityText = 'Poco Stock';
+        } else {
+          availabilityText = 'Agotado';
+        }
+        return {
+          id: `${name.replace(/\s+/g, '-').toLowerCase()}-${index}`,
+          name,
+          price: `$${(Math.random() * 100 + 10).toFixed(2)}`, // Placeholder price
+          availability: availabilityText,
+          imageUrl: `https://placehold.co/300x200.png`, // Placeholder image
+          dataAiHint: name.split(' ').slice(0,2).join(' ').toLowerCase() || 'producto moda', // Placeholder AI hint in Spanish
+        };
+      });
       onResults(products);
     } catch (error) {
       console.error('Search failed:', error);
-      onError('Failed to search products. Please try again.');
+      onError('Error al buscar productos. Por favor, inténtalo de nuevo.');
       onResults([]);
     } finally {
       onLoading(false);
@@ -57,13 +68,13 @@ export function ProductSearch({ onResults, onLoading, onError, isLoading }: Prod
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search products by name or characteristics..."
+        placeholder="Buscar productos por nombre o características..."
         className="flex-grow rounded-md"
-        aria-label="Search products"
+        aria-label="Buscar productos"
       />
       <Button type="submit" disabled={isLoading} className="rounded-md">
         {isLoading ? <Loader2 className="animate-spin" /> : <SearchIcon />}
-        <span className="ml-2 hidden sm:inline">Search</span>
+        <span className="ml-2 hidden sm:inline">Buscar</span>
       </Button>
     </form>
   );

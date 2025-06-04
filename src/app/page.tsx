@@ -37,10 +37,10 @@ export default function HomePage() {
       <section className="mb-10 flex flex-col items-center">
         <ShoppingBag className="h-16 w-16 text-primary mb-4" />
         <h1 className="text-4xl font-headline font-bold mb-6 text-center text-foreground">
-          Find Your Perfect Product
+          Encuentra Tu Producto Perfecto
         </h1>
         <p className="text-lg text-muted-foreground mb-8 text-center max-w-2xl">
-          Use our smart search to discover products tailored to your needs. Just type in what you're looking for!
+          Usa nuestra búsqueda inteligente para descubrir productos adaptados a tus necesidades. ¡Simplemente escribe lo que estás buscando!
         </p>
         <ProductSearch
           onResults={handleResults}
@@ -53,7 +53,7 @@ export default function HomePage() {
       {searchError && (
          <Alert variant="destructive" className="mb-8 max-w-xl mx-auto">
             <Terminal className="h-4 w-4" />
-            <AlertTitle>Search Error</AlertTitle>
+            <AlertTitle>Error de Búsqueda</AlertTitle>
             <AlertDescription>{searchError}</AlertDescription>
           </Alert>
       )}
@@ -69,7 +69,7 @@ export default function HomePage() {
       {!isLoading && productsToDisplay.length > 0 && (
         <section>
           <h2 className="text-3xl font-headline font-semibold mb-8 text-center text-foreground">
-            Search Results
+            Resultados de Búsqueda
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {productsToDisplay.map(product => (
@@ -82,16 +82,16 @@ export default function HomePage() {
       {!isLoading && productsToDisplay.length === 0 && hasSearched && !searchError && (
          <div className="text-center text-muted-foreground py-10">
             <SearchIconLucide className="mx-auto h-12 w-12 mb-4" />
-            <p className="text-xl font-semibold">No Products Found</p>
-            <p>We couldn't find any products matching your search. Try different keywords.</p>
+            <p className="text-xl font-semibold">No Se Encontraron Productos</p>
+            <p>No pudimos encontrar ningún producto que coincida con tu búsqueda. Intenta con diferentes palabras clave.</p>
           </div>
       )}
 
       {!isLoading && !hasSearched && (
          <div className="text-center text-muted-foreground py-16">
             <SearchIconLucide className="mx-auto h-16 w-16 mb-6 opacity-50" />
-            <p className="text-2xl font-headline">Your product adventure starts here.</p>
-            <p className="text-md">Enter a search term above to explore our catalog.</p>
+            <p className="text-2xl font-headline">Tu aventura de productos comienza aquí.</p>
+            <p className="text-md">Ingresa un término de búsqueda arriba para explorar nuestro catálogo.</p>
           </div>
       )}
     </div>

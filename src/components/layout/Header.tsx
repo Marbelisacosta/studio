@@ -14,7 +14,7 @@ export function Header() {
               <Button variant="ghost" asChild>
                 <Link href="/" className="flex items-center px-2 py-1 sm:px-3 sm:py-2">
                   <ShoppingBag className="mr-0 h-5 w-5 sm:mr-2" />
-                  <span className="hidden sm:inline">Products</span>
+                  <span className="hidden sm:inline">Productos</span>
                 </Link>
               </Button>
             </li>
@@ -22,7 +22,7 @@ export function Header() {
               <Button variant="ghost" asChild>
                 <Link href="/about" className="flex items-center px-2 py-1 sm:px-3 sm:py-2">
                   <Info className="mr-0 h-5 w-5 sm:mr-2" />
-                  <span className="hidden sm:inline">About Us</span>
+                  <span className="hidden sm:inline">Nosotros</span>
                 </Link>
               </Button>
             </li>
