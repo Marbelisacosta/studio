@@ -14,14 +14,14 @@ import { collection, getDocs, limit, query as firestoreQuery, where, startAfter,
 import { Button } from '@/components/ui/button';
 
 const PRODUCTS_PER_PAGE = 8;
-const FIRESTORE_COLLECTION_NAME = 'Productos'; // Nombre de la colección actualizado a "Productos"
+const FIRESTORE_COLLECTION_NAME = 'Productos';
 
 export default function HomePage() {
   const [productsToDisplay, setProductsToDisplay] = useState<ProductType[]>([]);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false); // For general product loading (initial/pagination)
-  const [isSearching, setIsSearching] = useState(false); // Specifically for Genkit search
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isSearchingAi, setIsSearchingAi] = useState(false); // Loading state for Genkit AI search
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState(false); // True if a Genkit search has been performed
+  const [hasSearched, setHasSearched] = useState(false);
   
   const [lastVisibleProduct, setLastVisibleProduct] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMoreProducts, setHasMoreProducts] = useState(true);
@@ -29,20 +29,20 @@ export default function HomePage() {
 
   const { currentUser, loading: authLoading } = useAuth();
 
-  const fetchProductsFromFirestore = useCallback(async (loadMore = false) => {
+  const fetchInitialProducts = useCallback(async (loadMore = false) => {
     if (!hasMoreProducts && loadMore) return; 
-    if (hasSearched && !loadMore) return; 
-
+    
     setIsLoadingProducts(true);
     setSearchError(null);
     try {
-      const productsCollectionRef = collection(db, FIRESTORE_COLLECTION_NAME); // Usar la constante
+      const productsCollectionRef = collection(db, FIRESTORE_COLLECTION_NAME);
       let q;
 
       if (loadMore && lastVisibleProduct) {
         q = firestoreQuery(productsCollectionRef, orderBy("name"), startAfter(lastVisibleProduct), limit(PRODUCTS_PER_PAGE));
       } else {
-        setProductsToDisplay([]); 
+        // For initial load or clearing search, reset productsToDisplay before fetching.
+        if (!loadMore) setProductsToDisplay([]); 
         q = firestoreQuery(productsCollectionRef, orderBy("name"), limit(PRODUCTS_PER_PAGE));
       }
       
@@ -57,8 +57,6 @@ export default function HomePage() {
         setLastVisibleProduct(querySnapshot.docs[querySnapshot.docs.length - 1]);
         setHasMoreProducts(true);
       }
-      if (!loadMore) setHasSearched(false);
-
     } catch (error) {
       console.error('Error fetching products from Firestore:', error);
       setSearchError('Error al cargar productos desde la base de datos.');
@@ -67,47 +65,90 @@ export default function HomePage() {
       setIsLoadingProducts(false);
       if(!loadMore) setInitialLoadComplete(true);
     }
-  }, [lastVisibleProduct, hasMoreProducts, hasSearched]);
+  }, [lastVisibleProduct, hasMoreProducts]);
 
   useEffect(() => {
     if (!initialLoadComplete && !hasSearched) {
-      fetchProductsFromFirestore(false);
+      fetchInitialProducts(false);
     }
-  }, [initialLoadComplete, hasSearched, fetchProductsFromFirestore]);
+  }, [initialLoadComplete, hasSearched, fetchInitialProducts]);
 
 
-  const handleSearchResults = (products: ProductType[]) => {
-    const searchedProductsWithStock = products.map(p => ({...p, stock: p.stock ?? Math.floor(Math.random() * 20)}));
-    setProductsToDisplay(searchedProductsWithStock); 
-    setHasSearched(true);
-    setHasMoreProducts(false); 
-    setInitialLoadComplete(true); 
+  const fetchProductsByNamesFromFirestore = async (names: string[]) => {
+    if (names.length === 0) {
+      setProductsToDisplay([]);
+      setSearchError(null); // Clear any previous errors
+      setIsLoadingProducts(false); // Ensure loading is false
+      setHasSearched(true); // Mark that a search was attempted
+      setHasMoreProducts(false); // No pagination for empty search results
+      setInitialLoadComplete(true);
+      return;
+    }
+
+    setIsLoadingProducts(true);
+    setSearchError(null);
+    setProductsToDisplay([]); // Clear previous/paginated results
+
+    try {
+      const productsRef = collection(db, FIRESTORE_COLLECTION_NAME);
+      // Firestore 'in' query can handle up to 30 elements.
+      // If AI returns more, we might need to batch, but for now, take the first 30.
+      const q = firestoreQuery(productsRef, where('name', 'in', names.slice(0, 30)));
+      const querySnapshot = await getDocs(q);
+      const foundProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), stock: doc.data().stock ?? 0 } as ProductType));
+      setProductsToDisplay(foundProducts);
+    } catch (error) {
+      console.error('Error fetching searched products from Firestore:', error);
+      setSearchError('Error al buscar productos coincidentes en la base de datos.');
+      setProductsToDisplay([]);
+    } finally {
+      setIsLoadingProducts(false);
+      setHasSearched(true);
+      setHasMoreProducts(false); // Search results are not paginated this way
+      setInitialLoadComplete(true);
+    }
+  };
+
+  const handleAiSearchResults = (productNames: string[]) => {
+    // AI search is complete (isSearchingAi will be set to false by ProductSearch)
+    // Now, fetch these names from Firestore
+    fetchProductsByNamesFromFirestore(productNames);
   };
 
   const handleSearchLoading = (loading: boolean) => {
-    setIsSearching(loading);
+    setIsSearchingAi(loading);
     if (loading) {
-      setHasSearched(true); 
-      setProductsToDisplay([]); 
+      setHasSearched(true); // A search is being initiated
+      setProductsToDisplay([]); // Clear current products to show loading state
+      setSearchError(null);
+      setIsLoadingProducts(true); // Show skeletons while AI is searching too
+    } else {
+      // When AI search finishes, isLoadingProducts might still be true if we are fetching from Firestore
+      // It will be set to false in fetchProductsByNamesFromFirestore
     }
   };
 
   const handleSearchError = (error: string | null) => {
     setSearchError(error);
-    setHasSearched(true);
+    setHasSearched(true); // Mark that a search attempt was made, even if it failed
     setProductsToDisplay([]);
+    setIsLoadingProducts(false); // Stop loading if AI search itself errors out
   }
   
   const handleClearSearch = () => {
     setHasSearched(false);
     setSearchError(null);
     setLastVisibleProduct(null); 
-    setHasMoreProducts(true);
-    setInitialLoadComplete(false); 
+    setHasMoreProducts(true); // Allow pagination again
+    setInitialLoadComplete(false); // Trigger initial fetch
+    // fetchInitialProducts(false) will be called by the useEffect
   }
 
   const displayProducts = productsToDisplay;
-
+  // Determine if skeletons should be shown:
+  // - If AI is searching (isSearchingAi)
+  // - Or if we are loading products from Firestore (isLoadingProducts) AND AI search is done.
+  const showSkeletons = isSearchingAi || (isLoadingProducts && !isSearchingAi);
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -118,7 +159,7 @@ export default function HomePage() {
             Esta versión integra Firebase Authentication. Los roles se leen/escriben en Firestore (<code>users</code> colección).
             Los productos se cargan desde Firestore (<code>{FIRESTORE_COLLECTION_NAME}</code> colección).
             La actualización de stock (empleados) simula una llamada a Cloud Function actualizando Firestore.
-            <strong className="block mt-1">Importante:</strong> Configura tus credenciales de Firebase en <code>.env</code> para que funcione.
+            <strong className="block mt-1">Importante:</strong> Configura tus credenciales de Firebase en <code>.env</code> y la API Key de Google AI para que Genkit funcione.
             Asegúrate de tener datos en tu colección <code>{FIRESTORE_COLLECTION_NAME}</code> de Firestore con campos <code>name (string)</code> y <code>stock (number)</code>.
           </AlertDescription>
         </Alert>
@@ -129,14 +170,14 @@ export default function HomePage() {
           Encuentra Tu Producto Perfecto
         </h1>
         <p className="text-lg text-muted-foreground mb-8 text-center max-w-2xl">
-          Usa nuestra búsqueda inteligente Genkit. Los productos y el stock se gestionan con Firestore.
+          Usa nuestra búsqueda inteligente Genkit para obtener sugerencias, luego buscaremos en nuestro catálogo de Firestore.
         </p>
         <div className="flex w-full max-w-xl items-center space-x-2">
           <ProductSearch
-            onResults={handleSearchResults}
+            onResults={handleAiSearchResults}
             onLoading={handleSearchLoading}
             onError={handleSearchError}
-            isLoading={isSearching} 
+            isLoading={isSearchingAi} 
           />
           {hasSearched && (
             <Button variant="outline" onClick={handleClearSearch}>Limpiar</Button>
@@ -152,7 +193,7 @@ export default function HomePage() {
           </Alert>
       )}
       
-      {(isLoadingProducts || (isSearching && displayProducts.length === 0)) && (
+      {showSkeletons && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {[...Array(PRODUCTS_PER_PAGE)].map((_, i) => (
             <CardSkeleton key={i} />
@@ -160,25 +201,25 @@ export default function HomePage() {
         </div>
       )}
 
-      {!isLoadingProducts && !isSearching && displayProducts.length === 0 && initialLoadComplete && !searchError && (
+      {!showSkeletons && displayProducts.length === 0 && initialLoadComplete && !searchError && (
          <div className="text-center text-muted-foreground py-10">
             <SearchIconLucide className="mx-auto h-12 w-12 mb-4" />
             <p className="text-xl font-semibold">
-              {hasSearched ? "No Se Encontraron Productos para tu Búsqueda" : "No Hay Productos en el Catálogo"}
+              {hasSearched ? "No se encontraron productos para tu búsqueda en nuestro catálogo." : "No hay productos en el catálogo."}
             </p>
             <p>
               {hasSearched 
-                ? "Intenta con diferentes palabras clave." 
+                ? "Intenta con diferentes palabras clave o revisa todos nuestros productos." 
                 : "Asegúrate de haber añadido productos a tu base de datos Firestore."}
             </p>
              {hasSearched && <Button variant="link" onClick={handleClearSearch}>Ver todos los productos</Button>}
           </div>
       )}
       
-      {displayProducts.length > 0 && (
+      {!showSkeletons && displayProducts.length > 0 && (
         <section>
           <h2 className="text-3xl font-headline font-semibold mb-8 text-center text-foreground">
-            {hasSearched ? "Resultados de Búsqueda" : "Nuestro Catálogo"}
+            {hasSearched ? "Resultados de Búsqueda en Catálogo" : "Nuestro Catálogo"}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {displayProducts.map(product => (
@@ -187,7 +228,7 @@ export default function HomePage() {
           </div>
           {!hasSearched && hasMoreProducts && !isLoadingProducts && (
             <div className="mt-8 text-center">
-              <Button onClick={() => fetchProductsFromFirestore(true)} disabled={isLoadingProducts}>
+              <Button onClick={() => fetchInitialProducts(true)} disabled={isLoadingProducts}>
                 {isLoadingProducts ? <Loader2 className="animate-spin mr-2"/> : null}
                 {isLoadingProducts ? "Cargando más..." : "Cargar Más Productos"}
               </Button>
