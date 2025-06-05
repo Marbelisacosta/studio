@@ -103,15 +103,11 @@ export default function HomePage() {
 
     try {
       const productsRef = collection(db, FIRESTORE_COLLECTION_NAME);
-      // Firestore 'in' query limit is 30 values.
-      // We also use toLowerCase() on names for a case-insensitive "like" search.
-      // This requires names in Firestore to also be consistently cased or a more complex search solution.
-      // For now, we'll rely on the AI flow to return correctly cased names or multiple variations.
       const q = firestoreQuery(productsRef, where('name', 'in', names.slice(0, 30))); 
       const querySnapshot = await getDocs(q);
       const foundProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), stock: doc.data().stock ?? 0 } as ProductType));
       setProductsToDisplay(foundProducts);
-      setHasMoreProducts(false); // For AI search results, we don't implement pagination yet.
+      setHasMoreProducts(false); 
     } catch (error) {
       console.error('Error fetching searched products from Firestore:', error);
       setSearchError('Error al buscar productos coincidentes en la base de datos.');
@@ -149,8 +145,7 @@ export default function HomePage() {
     setSearchError(null);
     setLastVisibleProduct(null); 
     setHasMoreProducts(true);
-    setInitialLoadComplete(false); // This will trigger fetchInitialProducts
-    // setProductsToDisplay([]); // fetchInitialProducts will set this
+    setInitialLoadComplete(false); 
   }
 
   const displayProducts = productsToDisplay;
@@ -168,7 +163,9 @@ export default function HomePage() {
               ? `Esta aplicación te permite gestionar el stock de tus productos. Utiliza Firebase Authentication para los roles (empleado/admin) y Firestore para almacenar los productos (${FIRESTORE_COLLECTION_NAME} colección) y usuarios (users colección). Las actualizaciones de stock (entradas/salidas) se realizan directamente en Firestore.`
               : `Explora nuestros productos. Si eres un empleado o administrador, inicia sesión para acceder a las herramientas de gestión de inventario.`
             }
-            <strong className="block mt-1">Importante:</strong> Para la búsqueda inteligente de productos, asegúrate de que la API Key de Google AI esté configurada en <code>.env</code>.
+            {isEmployeeOrAdmin && !process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY && 
+              <strong className="block mt-1 text-destructive">Importante: La búsqueda inteligente de productos podría no funcionar si la API Key de Google AI no está configurada en <code>.env</code>.</strong>
+            }
             {isEmployeeOrAdmin && ` Asegúrate de tener datos en tu colección ${FIRESTORE_COLLECTION_NAME} de Firestore con campos name (string) y stock (number).`}
           </AlertDescription>
         </Alert>
