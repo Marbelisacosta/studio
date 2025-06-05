@@ -13,6 +13,7 @@ export interface Product {
 export type UserRoleType = 'admin' | 'employee' | 'client';
 
 export interface UserProfile {
+  id?: string; // Firestore document ID - opcional, principalmente para listas
   uid: string;
   email: string | null;
   role: UserRoleType;

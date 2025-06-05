@@ -79,8 +79,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const usersCollectionRef = collection(db, 'users');
       const querySnapshot = await getDocs(usersCollectionRef);
-      const usersList = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as UserProfile));
-      return usersList.filter(user => user.uid); 
+      const usersList = querySnapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        // Construir el objeto UserProfile asegurando que los campos requeridos estén presentes
+        return {
+          id: docSnap.id, // El ID del documento de Firestore
+          uid: data.uid || docSnap.id, // El uid del usuario, o fallback al id del documento si es necesario
+          email: data.email || null, // El email del usuario
+          role: data.role || 'client', // El rol, con 'client' como predeterminado si no existe
+        } as UserProfile; // Afirmación de tipo después de construir el objeto con campos esperados
+      });
+      return usersList.filter(user => user.uid && user.role); // Asegurar que los campos clave existan
     } catch (error) {
       console.error("Error al obtener todos los usuarios de Firestore:", error);
       throw error;
