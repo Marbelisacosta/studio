@@ -3,8 +3,16 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
-import { Toaster } from "@/components/ui/toaster";
+// Remove direct import of Toaster
+// import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
+import dynamic from 'next/dynamic';
+
+// Dynamically import Toaster with SSR disabled
+const DynamicToaster = dynamic(() =>
+  import('@/components/ui/toaster').then((mod) => mod.Toaster),
+  { ssr: false }
+);
 
 export const metadata: Metadata = {
   title: 'Gestión de Inventario Click Shop',
@@ -33,7 +41,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
-          <Toaster />
+          <DynamicToaster /> {/* Use the dynamically imported Toaster */}
         </AuthProvider>
       </body>
     </html>
