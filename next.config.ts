@@ -41,3 +41,4 @@ const nextConfig: NextConfig = {
 
 // export default withPWA(nextConfig); // Temporarily export nextConfig directly
 export default nextConfig; // Exporting nextConfig directly for now
+
