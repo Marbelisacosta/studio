@@ -4,6 +4,7 @@ import withPWAInit from 'next-pwa';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: 'export', // Add this line for static export
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -11,6 +12,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
+    unoptimized: true, // Add this if using next export with next/image
     remotePatterns: [
       {
         protocol: 'https',
