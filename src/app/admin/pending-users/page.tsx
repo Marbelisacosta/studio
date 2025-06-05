@@ -142,8 +142,8 @@ export default function ManageUsersPage() {
                       <TableCell className="text-right">
                         <Select
                           value={user.role}
-                          onValueChange={(newRole) => handleRoleChange(user.uid, newRole as UserRoleType)}
-                          disabled={user.uid === currentUser?.uid && user.role === 'admin' && newRole !== 'admin'}
+                          onValueChange={(newRoleSelected) => handleRoleChange(user.uid, newRoleSelected as UserRoleType)}
+                          disabled={user.uid === currentUser?.uid && user.role === 'admin'}
                         >
                           <SelectTrigger className="w-[150px] h-9">
                             <SelectValue placeholder="Cambiar rol" />
