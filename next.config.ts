@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   output: 'export', // Add this line for static export
   typescript: {
-    ignoreBuildErrors: true,
+    // ignoreBuildErrors: true, // Removed this line
   },
   eslint: {
     ignoreDuringBuilds: true,
