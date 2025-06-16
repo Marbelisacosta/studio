@@ -5,6 +5,7 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   output: 'export', // Add this line for static export
+  trailingSlash: false, // Explicitly set trailingSlash for next export
   typescript: {
     // ignoreBuildErrors: true, // This was previously removed, which is good
   },
